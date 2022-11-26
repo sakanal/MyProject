@@ -4,6 +4,7 @@ import cn.hutool.core.lang.Dict;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import utils.ConnectionUtils;
 
 import java.io.*;
 import java.net.URL;
@@ -47,27 +48,7 @@ public class jsoupVilipixUser {
             }
             return result.toString();
         } finally {
-            if (inputStreamReader != null) {
-                try {
-                    inputStreamReader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if (bis != null) {
-                try {
-                    bis.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if (is != null) {
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            ConnectionUtils.close(bis,is,inputStreamReader);
         }
     }
 

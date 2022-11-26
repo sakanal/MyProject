@@ -7,6 +7,7 @@ import cn.hutool.json.JSONUtil;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
+import utils.ConnectionUtils;
 
 import java.io.*;
 import java.net.URL;
@@ -50,27 +51,7 @@ public class jsoupVIlipixUserAll {
             }
             return result.toString();
         } finally {
-            if (inputStreamReader != null) {
-                try {
-                    inputStreamReader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if (bis != null) {
-                try {
-                    bis.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if (is != null) {
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            ConnectionUtils.close(bis,is,inputStreamReader);
         }
     }
     /**
