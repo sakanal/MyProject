@@ -3,15 +3,12 @@ package pixiv.URLConnection;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import pixiv.bean.Picture;
-import utils.PixivUtils;
-import utils.URLConnectionUtils;
+import pixiv.utils.PixivUtils;
+import pixiv.utils.URLConnectionUtils;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URLConnection;
-import java.util.ArrayList;
 
 public class PixivPicture {
     private String userId="27517";

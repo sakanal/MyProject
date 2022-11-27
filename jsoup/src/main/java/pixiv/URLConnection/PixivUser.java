@@ -2,11 +2,11 @@ package pixiv.URLConnection;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import utils.CheckPixivPicture;
+import pixiv.utils.CheckPixivPicture;
 import pixiv.bean.Picture;
-import utils.ConnectionUtils;
-import utils.PixivUtils;
-import utils.URLConnectionUtils;
+import pixiv.utils.ConnectionUtils;
+import pixiv.utils.PixivUtils;
+import pixiv.utils.URLConnectionUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;

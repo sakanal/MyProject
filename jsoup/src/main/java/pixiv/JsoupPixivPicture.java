@@ -3,8 +3,8 @@ package pixiv;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import pixiv.bean.Picture;
-import utils.PixivUtils;
-import utils.URLConnectionUtils;
+import pixiv.utils.PixivUtils;
+import pixiv.utils.URLConnectionUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
