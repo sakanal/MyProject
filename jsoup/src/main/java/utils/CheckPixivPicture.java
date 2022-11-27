@@ -1,4 +1,4 @@
-package pixiv;
+package utils;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -11,19 +11,18 @@ import java.util.List;
 import java.util.Set;
 
 public class CheckPixivPicture {
-    private static String SimpleDirName = "E:\\图片\\pixiv\\";
-    public static void getRealPictureList(String pictureInfo,List<Picture> pictureList){
-        List<Picture> myPictureList = getMyPictureList(pictureInfo);
+    public static void getRealPictureList(String simpleDirName,String pictureInfo,List<Picture> pictureList){
+        List<Picture> myPictureList = getMyPictureList(simpleDirName,pictureInfo);
         if (myPictureList!=null && myPictureList.size()>0){
             pictureList.removeAll(myPictureList);
         }
     }
-    public static List<Picture> getMyPictureList(String pictureInfo) {
+    public static List<Picture> getMyPictureList(String simpleDirName,String pictureInfo) {
         //获取画家名称
         String userName = getUserName(pictureInfo);
-        SimpleDirName+=userName;
+        simpleDirName+=userName;
         //获取本地中该画家的所有图片id
-        List<String> pictureNameList = getPictureName();
+        List<String> pictureNameList = getPictureName(simpleDirName);
         if (pictureNameList!=null){
             //图片id转型
             List<Picture> pictureList = getPictureList(pictureNameList);
@@ -47,8 +46,8 @@ public class CheckPixivPicture {
         return PixivUtils.checkTitle(userName);
     }
     //获取本地中该画家的所有图片id
-    public static List<String> getPictureName(){
-        File folder = new File(SimpleDirName);
+    public static List<String> getPictureName(String simpleDirName){
+        File folder = new File(simpleDirName);
         if (!folder.exists())
             return null;
         File[] files = folder.listFiles();

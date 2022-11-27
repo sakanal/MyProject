@@ -2,10 +2,7 @@ package utils;
 
 import pixiv.bean.Picture;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 
 public class PixivUtils {
 
@@ -42,6 +39,27 @@ public class PixivUtils {
         }
     }
 
+    public static String getJsonResult(InputStream inputStream){
+        if (inputStream!=null){
+            InputStreamReader inputStreamReader = null;
+            BufferedReader bufferedReader = null;
+            try {
+                inputStreamReader = new InputStreamReader(inputStream);
+                bufferedReader = new BufferedReader(inputStreamReader);
+                String line;
+                StringBuilder result = new StringBuilder();
+                while ((line=bufferedReader.readLine()) != null){
+                    result.append(line);
+                }
+                return new String(result);
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                ConnectionUtils.close(bufferedReader,inputStream,inputStreamReader);
+            }
+        }
+        return null;
+    }
 
     public static boolean downloadPicture(String dirName, Picture picture, InputStream inputStream){
         try {
@@ -63,5 +81,17 @@ public class PixivUtils {
             return false;
         }
         return true;
+    }
+
+    public static String changeSrcFormat(String src){
+        String[] split = src.split("\\.");
+        String imageFormat = split[split.length - 1];
+        if ("jpg".equals(imageFormat)){
+            System.out.println("改为png");
+            return src.replace("jpg","png");
+        }else {
+            System.out.println("改为jpg");
+            return src.replace("png","jpg");
+        }
     }
 }

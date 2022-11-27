@@ -2,6 +2,7 @@ package pixiv;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import utils.CheckPixivPicture;
 import pixiv.bean.Picture;
 import utils.ConnectionUtils;
 import utils.PixivUtils;
@@ -18,7 +19,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class URLConnectionPixivUser {
+public class JsoupPixivUser2 {
     //1960050 torino
     //56627683 SWKL·D
     //14801956 void_0
@@ -27,11 +28,12 @@ public class URLConnectionPixivUser {
     //67093476 日宝
     //162475 煎茶
     //6558698 siki
-    private static final Integer userId=6558698;
+    //70050825 ほうき星
+    private static final Integer userId=70050825;
     private static final Integer lastPictureId=0;
     private static String userName=null;
 
-    private static final String SimpleDirName="E:\\图片\\pixiv\\";
+    private static final String simpleDirName="E:\\图片\\pixiv\\";
 
     private static final List<Picture> failPicture = new ArrayList<>();
 
@@ -55,7 +57,7 @@ public class URLConnectionPixivUser {
             //提前获取画师名称
             String ajaxUrl = getAjaxUrl(pictureList.get(0));
             String pictureInfo = getPictureInfo(ajaxUrl);
-            CheckPixivPicture.getRealPictureList(pictureInfo,pictureList);
+            CheckPixivPicture.getRealPictureList(simpleDirName,pictureInfo,pictureList);
         }
         download(pictureList);
     }
@@ -299,7 +301,7 @@ public class URLConnectionPixivUser {
                 return false;
             }
         }
-        String dirName=SimpleDirName+userName+"\\";
+        String dirName=simpleDirName+userName+"\\";
         return PixivUtils.downloadPicture(dirName,picture,inputStream);
     }
 

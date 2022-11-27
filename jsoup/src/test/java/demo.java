@@ -3,32 +3,9 @@ import java.util.concurrent.TimeUnit;
 public class demo {
     private static volatile boolean flag = false;
     public static void main(String[] args) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 1; i <= 26; i++) {
-                    try {
-                        TimeUnit.MILLISECONDS.sleep(1);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    System.out.print(i);
-                }
-            }
-        }).start();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (char i='A'; i <= 'Z'; i+=1) {
-                    try {
-                        TimeUnit.MILLISECONDS.sleep(1);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    System.out.print(i);
-                }
-            }
-        }).start();
+        int a=345;
+        int b=24;
+        System.out.println((int) Math.ceil((double) a/b));
 
     }
     //一千个风扇一千个人

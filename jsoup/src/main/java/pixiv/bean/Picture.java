@@ -14,10 +14,19 @@ public class Picture {
     private String id;//
     private String src;//
     private Integer pageCount;//
+    private String userId;
     private String userName;
 
     public Picture(String id) {
         this.id = id;
+    }
+
+    public Picture(String title, String id, String src, Integer pageCount, String userName) {
+        this.title = title;
+        this.id = id;
+        this.src = src;
+        this.pageCount = pageCount;
+        this.userName = userName;
     }
 
     @Override
