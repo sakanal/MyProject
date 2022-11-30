@@ -2,6 +2,7 @@ package pixiv.utils;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import pixiv.URLConnection.PixivUser;
 import pixiv.bean.Picture;
 
 import java.io.File;
@@ -18,8 +19,8 @@ public class CheckPixivPicture {
     }
     public static List<Picture> getMyPictureList(String simpleDirName,String pictureInfo) {
         //获取画家名称
-        String userName = getUserName(pictureInfo);
-        simpleDirName+=userName;
+        String myFileName = getMyFileName(pictureInfo);
+        simpleDirName+=myFileName;
         //获取本地中该画家的所有图片id
         List<String> pictureNameList = getPictureName(simpleDirName);
         if (pictureNameList!=null){
@@ -32,17 +33,19 @@ public class CheckPixivPicture {
         return null;
     }
     //获取画家名称
-    public static String getUserName(String pictureInfo){
+    public static String getMyFileName(String pictureInfo){
         Object body = JSONUtil.parseObj(pictureInfo).get("body");
         Object works = JSONUtil.parseObj(body).get("works");
         JSONObject jsonObject = JSONUtil.parseObj(works);
         Set<String> keySet = jsonObject.keySet();
-        String userName = null;
+        String myFileName = null;
         for (String key : keySet) {
             Object info = jsonObject.get(key);
-            userName = (String) JSONUtil.parseObj(info).get("userName");
+            myFileName = (String) JSONUtil.parseObj(info).get("userName");
+            String userId = (String) JSONUtil.parseObj(info).get("userId");
+            myFileName = PixivUtils.checkTitle(myFileName)+"-"+userId;
         }
-        return PixivUtils.checkTitle(userName);
+        return myFileName;
     }
     //获取本地中该画家的所有图片id
     public static List<String> getPictureName(String simpleDirName){

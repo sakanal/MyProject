@@ -241,12 +241,11 @@ public class PixivUser {
                 urlConnection = URLConnectionUtils.getURLConnection(picture.getSrc());
                 inputStream  = URLConnectionUtils.getInputStream(urlConnection);
             } catch (IOException ex) {
-                ex.printStackTrace();
                 failPictureList.add(picture);
                 return false;
             }
         }
-        String dirName=simpleDirName+userName+"\\";
+        String dirName=simpleDirName+userName+"-"+picture.getUserId()+"\\";
         return PixivUtils.downloadPicture(dirName,picture,inputStream);
     }
 

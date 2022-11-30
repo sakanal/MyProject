@@ -102,7 +102,7 @@ public class PixivPicture {
                 return false;
             }
         }
-        String dirName=downloadDirName+picture.getUserName()+"\\";
+        String dirName=downloadDirName+picture.getUserName()+"-"+ picture.getUserId()+"\\";
         return PixivUtils.downloadPicture(dirName,picture,inputStream);
     }
 }
