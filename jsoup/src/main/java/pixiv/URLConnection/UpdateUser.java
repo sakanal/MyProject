@@ -1,16 +1,14 @@
 package pixiv.URLConnection;
 
-import pixiv.bean.User;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class UpdataUser {
+public class UpdateUser {
     private final String simpleDirName;
     private final List<String> myUserIdList;
-    public UpdataUser(String simpleDirName) throws FileNotFoundException {
+    public UpdateUser(String simpleDirName) throws FileNotFoundException {
         this.simpleDirName=simpleDirName;
         myUserIdList = getMyUserIdList();
     }
