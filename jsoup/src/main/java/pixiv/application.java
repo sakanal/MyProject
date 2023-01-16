@@ -3,7 +3,7 @@ package pixiv;
 import pixiv.URLConnection.PixivFollowing;
 import pixiv.URLConnection.PixivPicture;
 import pixiv.URLConnection.PixivUser;
-import pixiv.URLConnection.UpdataUser;
+import pixiv.URLConnection.UpdateUser;
 
 import java.io.FileNotFoundException;
 
@@ -21,18 +21,20 @@ public class application {
     //登录用户id
     private static final Integer myUserId=20225328;
     //画师id
-    private static final String userId="8189060";
+    private static final String userId="1079073";
     //画作id
-    private static final String pictureId="78468459";
+    private static final String pictureId="82625387";
+    //画师id组
+    private static final Integer[] userIdArray={10495320,22124330,31147264,792198};
     //下载地址
     private static final String simpleDownloadDirName="E:\\图片\\pixiv\\";
 
     public static void main(String[] args) throws Exception {
         long start = System.currentTimeMillis();
 
-        updata();
+        update();
+
 //        downloadByUser(userId);
-//        Integer[] userIdArray ={212801,2188232,1113943,2131660,1218472,1039353,8189060,490219,11729,480448};
 //        downloadByUser(userIdArray);
 //        downloadByPictureId(userId,pictureId);
 //        downloadByFollowing();
@@ -43,15 +45,15 @@ public class application {
         System.out.println("总共耗时"+((end-start)/1000)+"秒");
     }
 
-    public static void updata() throws Exception {
-        UpdataUser updataUser = null;
+    public static void update() throws Exception {
+        UpdateUser updateUser = null;
         try {
-            updataUser = new UpdataUser(simpleDownloadDirName);
+            updateUser = new UpdateUser(simpleDownloadDirName);
         } catch (FileNotFoundException e) {
             System.out.println("当前路径下没有画师图片文件夹");
         }
-        if (updataUser!=null){
-            updataUser.download();
+        if (updateUser!=null){
+            updateUser.download();
         }
 
     }

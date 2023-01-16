@@ -19,12 +19,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PixivUser {
-    private String userId;
+    private final String userId;
     private String userName=null;
 
-    private String simpleDirName;
+    private final String simpleDirName;
 
-    private List<Picture> pictureList;
+    private final List<Picture> pictureList;
     public static List<Picture> failPictureList = new ArrayList<>();
 
     public PixivUser(String userId, String simpleDirName) throws Exception {
@@ -39,7 +39,7 @@ public class PixivUser {
             //提前获取画师名称
             String ajaxUrl = getAjaxUrl(pictureList.get(0));
             String pictureInfo = getPictureInfo(ajaxUrl);
-            CheckPixivPicture.getRealPictureList(simpleDirName,pictureInfo,pictureList);
+            userName = CheckPixivPicture.getRealPictureList(simpleDirName, pictureInfo, pictureList);
         }
     }
 
@@ -195,7 +195,7 @@ public class PixivUser {
             System.out.println("总需要下载" + pictureList.size() + "份图片");
             System.out.println("下载完成，耗时：" + (end - start) / 1000 + "秒");
         }else {
-            System.out.println("暂无新画作，无需下载");
+            System.out.println("画师:"+userName+"\tuserID:"+userId+"\t暂无新画作，无需下载");
         }
     }
     /**
@@ -206,6 +206,7 @@ public class PixivUser {
     public void download(List<Picture> pictureList,Integer offset) {
         for (int i = 0; i < pictureList.size(); i++) {
             Integer pageCount = pictureList.get(i).getPageCount();
+//            System.out.println(pictureList.get(i));
             if (pageCount > 1) {
                 Picture picture = pictureList.get(i);
                 for (int j = 1; j <= pageCount; j++) {
@@ -215,13 +216,22 @@ public class PixivUser {
                     }
                     picture.setPageCount(j);
                     System.out.println("第" + (i + 1 + offset) + "组图片，第" + (j) + "张图片开始下载");
-                    downloadFile(picture);
-                    System.out.println("第" + (i + 1 + offset) + "组图片，第" + (j) + "张图片完成");
+                    boolean result = downloadFile(picture);
+                    if(result){
+                        System.out.println("第" + (i + 1 + offset) + "组图片，第" + (j) + "张图片完成");
+                    }else {
+                        System.out.println("第" + (i + 1 + offset) + "组图片，第" + (j) + "张图片下载失败，等待重新下载该组图片");
+                        break;
+                    }
                 }
             } else {
                 System.out.println("第" + (i + 1 + offset) + "张图片开始下载");
-                downloadFile(pictureList.get(i));
-                System.out.println("第" + (i + 1 + offset) + "张图片完成");
+                boolean result = downloadFile(pictureList.get(i));
+                if (result){
+                    System.out.println("第" + (i + 1 + offset) + "张图片完成");
+                }else {
+                    System.out.println("第" + (i + 1 + offset) + "张图片下载失败，等待后续下载");
+                }
             }
         }
     }
@@ -236,17 +246,32 @@ public class PixivUser {
             urlConnection = URLConnectionUtils.getURLConnection(picture.getSrc());
             inputStream  = URLConnectionUtils.getInputStream(urlConnection);
         } catch (IOException e) {
+            System.out.println("第一次修改后缀");
             picture.setSrc(PixivUtils.changeSrcFormat(picture.getSrc()));
             try {
                 urlConnection = URLConnectionUtils.getURLConnection(picture.getSrc());
                 inputStream  = URLConnectionUtils.getInputStream(urlConnection);
             } catch (IOException ex) {
-                failPictureList.add(picture);
-                return false;
+                System.out.println("修改后缀依然无法建立连接，尝试再次修改为原来的后缀");
+                picture.setSrc(PixivUtils.changeSrcFormat(picture.getSrc()));
+                try {
+                    urlConnection = URLConnectionUtils.getURLConnection(picture.getSrc());
+                    inputStream  = URLConnectionUtils.getInputStream(urlConnection);
+                }catch (IOException ioe){
+                    System.out.println("两次修改后缀都失败");
+                    failPictureList.add(picture);
+                    return false;
+                }
             }
         }
         String dirName=simpleDirName+userName+"-"+picture.getUserId()+"\\";
-        return PixivUtils.downloadPicture(dirName,picture,inputStream);
+        boolean result = PixivUtils.downloadPicture(dirName, picture, inputStream);
+        if (!result){
+            failPictureList.add(picture);
+            return false;
+        }else {
+            return true;
+        }
     }
 
     public static void downloadFailPicture(String simpleDirName){
@@ -261,7 +286,11 @@ public class PixivUser {
         }
         long end = System.currentTimeMillis();
         System.out.println("下载耗时"+((end-start)/1000)+"秒");
-        System.out.println("仍然下载失败的图片，大概率是动图");
-        resultFail.forEach(System.out::println);
+        if (resultFail.size()>0){
+            System.out.println("仍然下载失败的图片，大概率是动图");
+            resultFail.forEach(System.out::println);
+        }else {
+            System.out.println("补充下载完成");
+        }
     }
 }

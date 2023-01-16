@@ -30,6 +30,16 @@ public class PixivPicture {
     }
 
     public PixivPicture(Picture picture,String downloadDirName) {
+        Integer pageCount = picture.getPageCount();
+        // 如果是图片组，需要重新下载该组图片
+        if (pageCount>1){
+            String src = picture.getSrc();
+            String[] split = src.split("_p");
+            StringBuilder stringBuilder = new StringBuilder(split[0]).append("_p0");
+            split = split[1].split("\\.");
+            stringBuilder.append(".").append(split[1]);
+            picture.setSrc(new String(stringBuilder));
+        }
         this.userId=picture.getUserId();
         this.pictureId=picture.getId();
         this.picture = picture;
@@ -88,21 +98,30 @@ public class PixivPicture {
 
     }
     public boolean downloadFile(Picture picture){
-        URLConnection urlConnection = URLConnectionUtils.getURLConnection(picture.getSrc());
-        InputStream inputStream = null;
+        URLConnection urlConnection;
+        InputStream inputStream;
         try {
-            inputStream = URLConnectionUtils.getInputStream(urlConnection);
-        } catch (IOException e) {
-            picture.setSrc(PixivUtils.changeSrcFormat(picture.getSrc()));
             urlConnection = URLConnectionUtils.getURLConnection(picture.getSrc());
+            inputStream  = URLConnectionUtils.getInputStream(urlConnection);
+        } catch (IOException e) {
+            System.out.println("第一次修改后缀");
+            picture.setSrc(PixivUtils.changeSrcFormat(picture.getSrc()));
             try {
+                urlConnection = URLConnectionUtils.getURLConnection(picture.getSrc());
                 inputStream  = URLConnectionUtils.getInputStream(urlConnection);
             } catch (IOException ex) {
-                ex.printStackTrace();
-                return false;
+                System.out.println("修改后缀依然无法建立连接，尝试再次修改为原来的后缀");
+                picture.setSrc(PixivUtils.changeSrcFormat(picture.getSrc()));
+                try {
+                    urlConnection = URLConnectionUtils.getURLConnection(picture.getSrc());
+                    inputStream  = URLConnectionUtils.getInputStream(urlConnection);
+                }catch (IOException ioe){
+                    System.out.println("两次修改后缀都失败");
+                    return false;
+                }
             }
         }
-        String dirName=downloadDirName+picture.getUserName()+"-"+ picture.getUserId()+"\\";
-        return PixivUtils.downloadPicture(dirName,picture,inputStream);
+        String dirName=downloadDirName+PixivUtils.checkTitle(picture.getUserName())+"-"+ picture.getUserId()+"\\";
+        return PixivUtils.downloadPicture(dirName, picture, inputStream);
     }
 }

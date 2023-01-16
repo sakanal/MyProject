@@ -15,7 +15,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JsoupYandeTags {
-    public static String tags="hiki_niito";
+    //iijima_masashi
+    //hiki_niito
+    public static String tags="iijima_masashi";
     public static Integer page=1;
     public static Integer total=1;
     public static String simpleUrl="https://yande.re";
@@ -28,11 +30,13 @@ public class JsoupYandeTags {
         if (pagination.size()!=0){
             Elements a = pagination.get(0).getElementsByTag("a");
             total = Integer.valueOf(a.get(a.size() - 2).text());
+            System.out.println("总页数为:"+total);
         }
     }
     //获取某一页的所有图片详细页面的href
     public static List<Picture> initPictureList(Document document){
         Elements li = document.getElementById("post-list-posts").getElementsByTag("li");
+        System.out.println("当前页面有"+li.size()+"张图片");
         List<Picture> pictureList = new ArrayList<>();
         for (Element element:li){
             String id = element.attr("id").replace("p","");

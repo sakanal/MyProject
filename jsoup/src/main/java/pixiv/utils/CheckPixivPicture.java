@@ -11,11 +11,13 @@ import java.util.List;
 import java.util.Set;
 
 public class CheckPixivPicture {
-    public static void getRealPictureList(String simpleDirName,String pictureInfo,List<Picture> pictureList){
+    private static String userName;
+    public static String getRealPictureList(String simpleDirName,String pictureInfo,List<Picture> pictureList){
         List<Picture> myPictureList = getMyPictureList(simpleDirName,pictureInfo);
         if (myPictureList!=null && myPictureList.size()>0){
             pictureList.removeAll(myPictureList);
         }
+        return userName;
     }
     public static List<Picture> getMyPictureList(String simpleDirName,String pictureInfo) {
         //获取画家名称
@@ -41,9 +43,9 @@ public class CheckPixivPicture {
         String myFileName = null;
         for (String key : keySet) {
             Object info = jsonObject.get(key);
-            myFileName = (String) JSONUtil.parseObj(info).get("userName");
+            userName = (String) JSONUtil.parseObj(info).get("userName");
             String userId = (String) JSONUtil.parseObj(info).get("userId");
-            myFileName = PixivUtils.checkTitle(myFileName)+"-"+userId;
+            myFileName = PixivUtils.checkTitle(userName)+"-"+userId;
         }
         return myFileName;
     }
