@@ -1,0 +1,102 @@
+package com.sakanal.web.util;
+
+import com.sakanal.web.constant.SourceConstant;
+import com.sakanal.web.entity.Picture;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.*;
+import java.net.URL;
+
+@Slf4j
+public class PictureUtils {
+    public static boolean downloadPicture(String downloadDir, Picture picture,InputStream inputStream ,String type){
+        switch (type){
+            case SourceConstant.YANDE_SOURCE: {
+                return yande(downloadDir, picture);
+            }
+            case SourceConstant.PIXIV_SOURCE: {
+                return pixiv(downloadDir, picture,inputStream);
+            }
+            default:{
+                log.info("未知来源");
+                return false;
+            }
+        }
+    }
+
+    private static boolean yande(String downloadDir, Picture picture) {
+        InputStream inputStream;
+        try {
+            inputStream = new URL(picture.getSrc()).openConnection().getInputStream();
+        } catch (IOException e) {
+            log.info("获取图片网络地址数据失败，请检查网络情况");
+            e.printStackTrace();
+            return false;
+        }
+        String suffix = getSuffix(picture.getSrc());
+        String fileName=picture.getPictureId()+"."+suffix;
+
+        // 再获取总页数的时候就会创建文件夹
+//        File file = createDir(downloadDir);
+//        if (file==null) return false;
+
+        FileOutputStream outputStream;
+        try {
+            outputStream = new FileOutputStream(downloadDir + fileName);
+        } catch (FileNotFoundException e) {
+            log.info("图片输出路径有误，请检查用户名是否有误");
+            e.printStackTrace();
+            return false;
+        }
+        return download(inputStream, outputStream);
+    }
+
+    private static File createDir(String downloadDir) {
+        File file = new File(downloadDir);
+        if (!file.exists()) {
+            if (!file.mkdirs()) {
+                log.info("创建文件夹失败，请检查路径是否正确");
+                return null;
+            }
+        }
+        return file;
+    }
+
+    private static boolean pixiv(String downloadDir, Picture picture, InputStream inputStream){
+        File file = createDir(downloadDir);
+        if (file==null) return false;
+        String src = picture.getSrc();
+        String[] split = src.split("\\.");
+        String suffix = split[split.length - 1];
+        String fileName = downloadDir + picture.getPictureId() + "_p" + picture.getPageCount()+ "_" + picture.getTitle()+"."+suffix;
+        FileOutputStream outputStream = null;
+        try {
+            outputStream = new FileOutputStream(fileName);
+        } catch (FileNotFoundException e) {
+            log.info("无法建立图片路径，请检查图片标题是否存在无效数据");
+            e.printStackTrace();
+        }
+        return download(inputStream, outputStream);
+    }
+
+    private static boolean download(InputStream inputStream, FileOutputStream outputStream) {
+        try {
+            int temp;
+            while ((temp=inputStream.read())!=-1){
+                outputStream.write(temp);
+            }
+            inputStream.close();
+            outputStream.close();
+        } catch (IOException e) {
+            log.info("下载图片失败，请检查网络是否正常，有可能不是网络问题");
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    private static String getSuffix(String src){
+        String[] split = src.split("\\.");
+        return split[split.length-1];
+    }
+}

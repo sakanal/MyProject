@@ -1,0 +1,8 @@
+{
+  "properties": [
+    {
+      "name": "system.baseDownloadDir",
+      "type": "java.lang.String",
+      "description": "下载基础地址."
+  }
+] }
