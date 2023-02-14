@@ -76,10 +76,12 @@ public class PixivServiceImpl implements PixivService {
                             .eq(Picture::getType, SourceConstant.PIXIV_SOURCE)
                             .eq(Picture::getUserId, userId));
                     pictureList.removeAll(list);
-                    boolean saveBatch = pictureService.saveBatch(pictureList);
-                    log.info("画作数据持久化："+(saveBatch?"成功":"失败"));
                     log.info("画师：" + userName + "\tid：" + userId + "\t" + pictureList.size() + "张新画作");
-                    downloadPicture(pictureList);
+                    if (pictureList.size()>0){
+                        boolean saveBatch = pictureService.saveBatch(pictureList);
+                        log.info("画作数据持久化："+(saveBatch?"成功":"失败"));
+                        downloadPicture(pictureList);
+                    }
                 }
             }
         }
