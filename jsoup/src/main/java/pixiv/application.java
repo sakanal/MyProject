@@ -21,9 +21,9 @@ public class application {
     //登录用户id
     private static final Integer myUserId=20225328;
     //画师id
-    private static final String userId="1079073";
+    private static final String userId="3975343";
     //画作id
-    private static final String pictureId="82625387";
+    private static final String pictureId="106031367";
     //画师id组
     private static final Integer[] userIdArray={10495320,22124330,31147264,792198};
     //下载地址
@@ -32,11 +32,11 @@ public class application {
     public static void main(String[] args) throws Exception {
         long start = System.currentTimeMillis();
 
-        update();
+//        update();
 
 //        downloadByUser(userId);
 //        downloadByUser(userIdArray);
-//        downloadByPictureId(userId,pictureId);
+        downloadByPictureId(userId,pictureId);
 //        downloadByFollowing();
 
 
