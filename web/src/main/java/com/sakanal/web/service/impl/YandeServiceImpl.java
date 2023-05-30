@@ -100,6 +100,7 @@ public class YandeServiceImpl implements YandeService {
     }
 
     @Override
+    @Async("threadPoolExecutor")
     public void againDownload() {
         List<Picture> pictureList = pictureService.list(new LambdaQueryWrapper<Picture>()
                 .eq(Picture::getType, YANDE_SOURCE)
