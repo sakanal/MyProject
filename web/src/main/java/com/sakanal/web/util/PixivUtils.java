@@ -1,26 +1,31 @@
 package com.sakanal.web.util;
 
+import com.sakanal.web.config.MyPixivConfig;
 import com.sakanal.web.constant.PictureStatusConstant;
 import com.sakanal.web.entity.Picture;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Resource;
 import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.Map;
 import java.util.Set;
 
 @Slf4j
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "system.pixiv")
+//@ConfigurationProperties(prefix = "system.pixiv")
 public class PixivUtils {
-    private Map<String, String> requestHeader;
-    private String charsetName;
+//    private Map<String, String> requestHeader;
+//    private String charsetName;
+
+    @Resource
+    private MyPixivConfig myPixivConfig;
+    @Resource
+    private SeleniumUtils seleniumUtils;
 
     public InputStream getInputStream(String url) {
         URLConnection urlConnection = getURLConnection(url);
@@ -31,7 +36,7 @@ public class PixivUtils {
         try {
             inputStream = urlConnection.getInputStream();
         } catch (IOException e) {
-            log.info("建立连接失败，请检查请求头是否有效");
+            log.info("建立连接失败，请检查请求头是否有效，也有可能是作者销号了");
             e.printStackTrace();
             return null;
         }
@@ -74,6 +79,7 @@ public class PixivUtils {
     }
 
     private void changeSuffix(Picture picture) {
+        // todo gif文件
         String src = picture.getSrc();
         String[] split = src.split("\\.");
         String suffix = split[split.length - 1];
@@ -99,9 +105,9 @@ public class PixivUtils {
             e.printStackTrace();
             return null;
         }
-        Set<String> keySet = requestHeader.keySet();
+        Set<String> keySet = myPixivConfig.getRequestHeader().keySet();
         for (String key : keySet) {
-            String value = requestHeader.get(key);
+            String value = myPixivConfig.getRequestHeader().get(key);
             urlConnection.setRequestProperty(key, value);
         }
         return urlConnection;
@@ -109,9 +115,9 @@ public class PixivUtils {
 
     public String getUrlResult(InputStream inputStream) {
         InputStreamReader inputStreamReader;
-        if (StringUtils.hasText(charsetName)) {
+        if (StringUtils.hasText(myPixivConfig.getCharsetName())) {
             try {
-                inputStreamReader = new InputStreamReader(inputStream, charsetName);
+                inputStreamReader = new InputStreamReader(inputStream, myPixivConfig.getCharsetName());
             } catch (UnsupportedEncodingException e) {
                 log.info("不支持的编码格式");
                 e.printStackTrace();
