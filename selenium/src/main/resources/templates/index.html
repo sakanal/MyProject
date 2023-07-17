@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <title>Title</title>
+        <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet">
+    </head>
+    <body>
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-11">
+                    <form th:action="@{/selenium/liePin/start}" method="post">
+                        <div class="form-group row">
+                            <label class="col-2 col-form-label" for="key">搜索关键字</label>
+                            <div class="col-10">
+                                <input class="form-control" type="text" name="key" id="key">
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-2 col-form-label">名企</label>
+                            <div class="col-10">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compTag" id="compTag_none" value="" checked>
+                                    <label class="form-check-label" for="compTag_none">
+                                        不限
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compTag" id="compTag_0$3" value="qua_0004">
+                                    <label class="form-check-label" for="compTag_0$3">
+                                        财富中国500强
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compTag" id="compTag_qua_0009" value="qua_0009">
+                                    <label class="form-check-label" for="compTag_qua_0009">
+                                        创新企业100强
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compTag" id="compTag_qua_0005" value="qua_0005">
+                                    <label class="form-check-label" for="compTag_qua_0005">
+                                        制造业500强
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compTag" id="compTag_qua_0003" value="qua_0003">
+                                    <label class="form-check-label" for="compTag_qua_0003">
+                                        专精特新企业
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compTag" id="compTag_qua_0001" value="qua_0001">
+                                    <label class="form-check-label" for="compTag_qua_0001">
+                                        高新技术企业
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compTag" id="compTag_qua_0008" value="qua_0008">
+                                    <label class="form-check-label" for="compTag_qua_0008">
+                                        独角兽
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-2 col-form-label">城市</label>
+                            <div class="col-10">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_410" value="410" checked>
+                                    <label class="form-check-label" for="city_410">
+                                        全国
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_010" value="010">
+                                    <label class="form-check-label" for="city_010">
+                                        北京
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_020" value="020">
+                                    <label class="form-check-label" for="city_020">
+                                        上海
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_030" value="030">
+                                    <label class="form-check-label" for="city_030">
+                                        天津
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_040" value="040">
+                                    <label class="form-check-label" for="city_040">
+                                        重庆
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_050020" value="050020">
+                                    <label class="form-check-label" for="city_050020">
+                                        广州
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_050090" value="050090">
+                                    <label class="form-check-label" for="city_050090">
+                                        深圳
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_060080" value="060080">
+                                    <label class="form-check-label" for="city_060080">
+                                        苏州
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_060020" value="060020">
+                                    <label class="form-check-label" for="city_060020">
+                                        南京
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_070020" value="070020">
+                                    <label class="form-check-label" for="city_070020">
+                                        杭州
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_210040" value="210040">
+                                    <label class="form-check-label" for="city_210040">
+                                        大连
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_280020" value="280020">
+                                    <label class="form-check-label" for="city_280020">
+                                        成都
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_170020" value="170020">
+                                    <label class="form-check-label" for="city_170020">
+                                        武汉
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="city" id="city_270020" value="270020">
+                                    <label class="form-check-label" for="city_270020">
+                                        西安
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-form-label col-2 float-sm-left pt-0">薪资</label>
+                            <div class="col-10">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="salary" id="salary_none" value="" checked>
+                                    <label class="form-check-label" for="salary_none">
+                                        不限
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="salary" id="salary_0$3" value="0$3">
+                                    <label class="form-check-label" for="salary_0$3">
+                                        3k以下
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="salary" id="salary_3$5" value="3$5">
+                                    <label class="form-check-label" for="salary_3$5">
+                                        3k-5k
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="salary" id="salary_5$10" value="5$10">
+                                    <label class="form-check-label" for="salary_5$10">
+                                        5k-10k
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="salary" id="salary_10$20" value="10$20">
+                                    <label class="form-check-label" for="salary_10$20">
+                                        10k-20k
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="salary" id="salary_20$40" value="20$40">
+                                    <label class="form-check-label" for="salary_20$40">
+                                        20k-40k
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="salary" id="salary_40$60" value="40$60">
+                                    <label class="form-check-label" for="salary_40$60">
+                                        40k-60k
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="salary" id="salary_60$999" value="60$999">
+                                    <label class="form-check-label" for="salary_60$999">
+                                        60k以上
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-form-label col-2 float-sm-left pt-0">发布时间</label>
+                            <div class="col-10">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="pubTime" id="pubTime_none" value="" checked>
+                                    <label class="form-check-label" for="pubTime_none">
+                                        不限
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="pubTime" id="pubTime_1" value="1">
+                                    <label class="form-check-label" for="pubTime_1">
+                                        一天以内
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="pubTime" id="pubTime_3" value="3">
+                                    <label class="form-check-label" for="pubTime_3">
+                                        三天以内
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="pubTime" id="pubTime_7" value="7">
+                                    <label class="form-check-label" for="pubTime_7">
+                                        一周以内
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="pubTime" id="pubTime_30" value="30">
+                                    <label class="form-check-label" for="pubTime_30">
+                                        一个月以内
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-form-label col-2 float-sm-left pt-0">经验</label>
+                            <div class="col-10">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="workYearCode" id="workYearCode_none" value="" checked>
+                                    <label class="form-check-label" for="workYearCode_none">
+                                        不限
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="workYearCode" id="workYearCode_1" value="1">
+                                    <label class="form-check-label" for="workYearCode_1">
+                                        应届生
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="workYearCode" id="workYearCode_2" value="2" disabled>
+                                    <label class="form-check-label" for="workYearCode_2">
+                                        实习生
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="workYearCode" id="workYearCode_0$1" value="0$1">
+                                    <label class="form-check-label" for="workYearCode_0$1">
+                                        1年以内
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="workYearCode" id="workYearCode_1$3" value="1$3">
+                                    <label class="form-check-label" for="workYearCode_1$3">
+                                        1-3年
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="workYearCode" id="workYearCode_3$5" value="3$5">
+                                    <label class="form-check-label" for="workYearCode_3$5">
+                                        3-5年
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="workYearCode" id="workYearCode_5$10" value="5$10">
+                                    <label class="form-check-label" for="workYearCode_5$10">
+                                        5-10年
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="workYearCode" id="workYearCode_10$999" value="10$999">
+                                    <label class="form-check-label" for="workYearCode_10$999">
+                                        10年以上
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-form-label col-2 float-sm-left pt-0">职位类型</label>
+                            <div class="col-10">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="jobKind" id="jobKind_none" value="" checked>
+                                    <label class="form-check-label" for="jobKind_none">
+                                        不限
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="jobKind" id="jobKind_1" value="1">
+                                    <label class="form-check-label" for="jobKind_1">
+                                        猎头职位
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="jobKind" id="jobKind_2" value="2">
+                                    <label class="form-check-label" for="jobKind_2">
+                                        企业职位
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-form-label col-2 float-sm-left pt-0">学历</label>
+                            <div class="col-10">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="eduLevel" id="eduLevel_none" value="" checked>
+                                    <label class="form-check-label" for="eduLevel_none">
+                                        不限
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="eduLevel" id="eduLevel_010" value="010">
+                                    <label class="form-check-label" for="eduLevel_010">
+                                        博士
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="eduLevel" id="eduLevel_020" value="020">
+                                    <label class="form-check-label" for="eduLevel_020">
+                                        MBA/EMBA
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="eduLevel" id="eduLevel_030" value="030">
+                                    <label class="form-check-label" for="eduLevel_030">
+                                        硕士
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="eduLevel" id="eduLevel_040" value="040">
+                                    <label class="form-check-label" for="eduLevel_040">
+                                        本科
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="eduLevel" id="eduLevel_050" value="050">
+                                    <label class="form-check-label" for="eduLevel_050">
+                                        大专
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="eduLevel" id="eduLevel_060" value="060">
+                                    <label class="form-check-label" for="eduLevel_060">
+                                        中专/中技
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="eduLevel" id="eduLevel_080" value="080">
+                                    <label class="form-check-label" for="eduLevel_080">
+                                        高中
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="eduLevel" id="eduLevel_090" value="090">
+                                    <label class="form-check-label" for="eduLevel_090">
+                                        初中及以下
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-form-label col-2 float-sm-left pt-0">企业规模</label>
+                            <div class="col-10">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compScale" id="compScale_none" value="" checked>
+                                    <label class="form-check-label" for="compScale_none">
+                                        不限
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compScale" id="compScale_010" value="010">
+                                    <label class="form-check-label" for="compScale_010">
+                                        1-49人
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compScale" id="compScale_020" value="020">
+                                    <label class="form-check-label" for="compScale_020">
+                                        50-99人
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compScale" id="compScale_030" value="030">
+                                    <label class="form-check-label" for="compScale_030">
+                                        100-499人
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compScale" id="compScale_040" value="040">
+                                    <label class="form-check-label" for="compScale_040">
+                                        500-999人
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compScale" id="compScale_050" value="050">
+                                    <label class="form-check-label" for="compScale_050">
+                                        1000-2000人
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compScale" id="compScale_060" value="060">
+                                    <label class="form-check-label" for="compScale_060">
+                                        2000-5000人
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compScale" id="compScale_070" value="070">
+                                    <label class="form-check-label" for="compScale_070">
+                                        5000-10000人
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compScale" id="compScale_080" value="080">
+                                    <label class="form-check-label" for="compScale_080">
+                                        10000人及以上
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-form-label col-2 float-sm-left pt-0">融资阶段</label>
+                            <div class="col-10">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compStage" id="compStage_none" value="" checked>
+                                    <label class="form-check-label" for="compStage_none">
+                                        不限
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compStage" id="compStage_01" value="01">
+                                    <label class="form-check-label" for="compStage_01">
+                                        天使轮
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compStage" id="compStage_02" value="02">
+                                    <label class="form-check-label" for="compStage_02">
+                                        A轮
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compStage" id="compStage_03" value="03">
+                                    <label class="form-check-label" for="compStage_03">
+                                        B轮
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compStage" id="compStage_04" value="04">
+                                    <label class="form-check-label" for="compStage_04">
+                                        C轮
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compStage" id="compStage_05" value="05">
+                                    <label class="form-check-label" for="compStage_05">
+                                        D轮及以上
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compStage" id="compStage_06" value="06">
+                                    <label class="form-check-label" for="compStage_06">
+                                        已上市
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compStage" id="compStage_07" value="07">
+                                    <label class="form-check-label" for="compStage_07">
+                                        战略融资
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compStage" id="compStage_08" value="08">
+                                    <label class="form-check-label" for="compStage_08">
+                                        融资未公开
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compStage" id="compStage_99" value="99">
+                                    <label class="form-check-label" for="compStage_99">
+                                        其他
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-form-label col-2 float-sm-left pt-0">企业性质</label>
+                            <div class="col-10">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compKind" id="compKind_none" value="" checked>
+                                    <label class="form-check-label" for="compKind_none">
+                                        不限
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compKind" id="compKind_010" value="010">
+                                    <label class="form-check-label" for="compKind_010">
+                                        外商独资·外企办事处
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compKind" id="compKind_020" value="020">
+                                    <label class="form-check-label" for="compKind_020">
+                                        中外合资（合资·合作）
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compKind" id="compKind_030" value="030">
+                                    <label class="form-check-label" for="compKind_030">
+                                        私营·民营企业
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compKind" id="compKind_040" value="040">
+                                    <label class="form-check-label" for="compKind_040">
+                                        国有企业
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compKind" id="compKind_050" value="050">
+                                    <label class="form-check-label" for="compKind_050">
+                                        国内上市公司
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compKind" id="compKind_060" value="060">
+                                    <label class="form-check-label" for="compKind_060">
+                                        政府机关/非盈利机构
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compKind" id="compKind_070" value="070">
+                                    <label class="form-check-label" for="compKind_070">
+                                        事业单位
+                                    </label>
+                                </div>
+                                <div class="form-check disabled form-check-inline">
+                                    <input class="form-check-input" type="radio" name="compKind" id="compKind_999" value="999">
+                                    <label class="form-check-label" for="compKind_999">
+                                        其他
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-sm-10">
+                                <button type="submit" class="btn btn-primary">开始</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+
+        <script th:src="@{/js/jquery.min.js}"></script>
+        <script th:src="@{/js/bootstrap.min.js}"></script>
+    </body>
+</html>
