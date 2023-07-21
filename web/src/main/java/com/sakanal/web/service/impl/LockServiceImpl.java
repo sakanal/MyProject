@@ -19,21 +19,17 @@ public class LockServiceImpl extends ServiceImpl<LockMapper, Lock> implements Lo
 
     @Override
     public boolean setLock(String lockName) {
-        return this.updateById(Lock.setLock(lockName));
+        return this.save(Lock.setLock(lockName));
     }
 
     @Override
     public boolean unsetLock(String lockName) {
-        return this.updateById(Lock.unsetLock(lockName));
+        return this.removeById(lockName);
     }
 
     @Override
     public boolean checkLock(String lockName) {
-        Lock lock = this.getById(lockName);
-        if (lock == null) {
-            return !this.save(new Lock(lockName));
-        }
-        return lock.getIsLock() == 1;
+        return this.getById(lockName)!=null;
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.sakanal.web.entity;
 
+import cn.hutool.core.date.LocalDateTimeUtil;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -8,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.time.ZoneOffset;
 
 /**
  * <p>
@@ -28,21 +30,10 @@ public class Lock implements Serializable {
     @TableId("lock_name")
     private String lockName;
 
-    @TableField("is_lock")
-    private Integer isLock;
-
-    public Lock(String lockName) {
-        this.lockName = lockName;
-        this.isLock = 0;
-    }
+    @TableField("available_time")
+    private Long availableTime;
 
     public static Lock setLock(String lockName) {
-        return new Lock(lockName, 1);
+        return new Lock(lockName, LocalDateTimeUtil.now().plusHours(2).toInstant(ZoneOffset.of("+8")).toEpochMilli());
     }
-
-    public static Lock unsetLock(String lockName) {
-        return new Lock(lockName, 0);
-    }
-
-
 }
