@@ -29,6 +29,7 @@ public class MyWebConfig {
             System.setProperty("https.proxyHost", proxyHost);
             System.setProperty("https.proxyPort", proxyPort);
         }
+        System.setProperty("https.protocols", "TLSv1,TLSv1.1,TLSv1.2");
     }
 
 
