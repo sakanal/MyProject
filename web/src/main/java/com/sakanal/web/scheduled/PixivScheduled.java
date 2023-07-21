@@ -1,13 +1,16 @@
 package com.sakanal.web.scheduled;
 
+import cn.hutool.core.date.LocalDateTimeUtil;
+import com.sakanal.web.entity.Lock;
+import com.sakanal.web.service.LockService;
 import com.sakanal.web.service.PixivService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.concurrent.locks.ReentrantLock;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Component
@@ -15,34 +18,62 @@ public class PixivScheduled {
     @Resource
     private PixivService pixivService;
     @Resource
-    private ReentrantLock reentrantLock;
+    private LockService lockService;
+    @Value("${system.lock.pixiv}")
+    private String pixivLockName;
 
-    @Scheduled(cron = "0 0 6 * * ?")
+    @Scheduled(cron = "0 0 0/3 * * ? ")
     public void upload() {
-        if (reentrantLock.tryLock()){
+        if (!lockService.checkLock(pixivLockName)) {
             try {
-                log.info("上锁成功--开始更新数据");
-                pixivService.update();
+                if (lockService.setLock(pixivLockName)) {
+                    log.info(pixivLockName + "上锁成功--开始更新数据");
+                    pixivService.update();
+                } else {
+                    log.info(pixivLockName + "上锁失败");
+                }
             } finally {
-                reentrantLock.unlock();
-                log.info("解锁成功--更新数据完成");
+                if (lockService.unsetLock(pixivLockName)) {
+                    log.info(pixivLockName + "解锁成功--更新数据完成");
+                } else {
+                    log.info(pixivLockName + "解锁失败");
+                }
             }
         }else {
-            log.info("上锁失败--更新数据");
+            log.info("正在更新中");
         }
     }
-    @Scheduled(cron = "0 0 3 * * ?")
+
+    @Scheduled(cron = "0 0 20 * * ?")
     public void again() {
-        if (reentrantLock.tryLock()){
+        if (!lockService.checkLock(pixivLockName)) {
             try {
-                log.info("上锁成功--开始补充下载");
-                pixivService.againDownload();
+                if (lockService.setLock(pixivLockName)) {
+                    log.info(pixivLockName + "上锁成功--开始补充下载");
+                    pixivService.againDownload();
+                } else {
+                    log.info(pixivLockName + "上锁失败--补充下载");
+                }
             } finally {
-                reentrantLock.unlock();
-                log.info("解锁成功--补充下载完成");
+                if (lockService.unsetLock(pixivLockName)) {
+                    log.info(pixivLockName + "解锁成功--补充下载完成");
+                } else {
+                    log.info(pixivLockName + "解锁失败");
+                }
             }
-        }else {
-            log.info("上锁失败--补充下载");
+        } else {
+            log.info("正在更新中");
+        }
+    }
+
+    @Scheduled(cron = "0 59 23 * * ?")
+    public void cleanInvalidLock(){
+        if (lockService.checkLock(pixivLockName)){
+            Lock lock = lockService.getById(pixivLockName);
+            LocalDateTime availableTime = LocalDateTimeUtil.of(lock.getAvailableTime());
+            if (LocalDateTimeUtil.now().isAfter(availableTime)){
+                lockService.unsetLock(pixivLockName);
+            }
         }
     }
 }
