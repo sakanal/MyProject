@@ -20,7 +20,7 @@ import java.io.Serializable;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@TableName("lock")
+@TableName("my_lock")
 public class Lock implements Serializable {
 
     private static final long serialVersionUID = 1L;
