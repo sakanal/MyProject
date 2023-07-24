@@ -1,5 +1,6 @@
 package com.sakanal.web.service.impl;
 
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -24,13 +25,13 @@ import org.springframework.util.StringUtils;
 import javax.annotation.Resource;
 import java.io.File;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -123,25 +124,113 @@ public class PixivServiceImpl implements PixivService {
     }
 
     @Override
-    @Async("threadPoolExecutor")
+//    @Async("threadPoolExecutor")
     public void againDownload(){
         List<Picture> pictureList = pictureService.list(new LambdaQueryWrapper<Picture>()
                 .eq(Picture::getType, SourceConstant.PIXIV_SOURCE)
                 .and(query->query.eq(Picture::getStatus, PictureStatusConstant.DEFAULT_STATUS)
                         .or().eq(Picture::getStatus, PictureStatusConstant.FAIL_STATUS)));
-        if (pictureList!=null && pictureList.size()>0){
+        if (pictureList != null && pictureList.size() > 0) {
             downloadPicture(pictureList);
             failPictureService.saveOrUpdateBatch(pictureList);
             failPictureService.remove(new LambdaQueryWrapper<FailPicture>()
-                    .eq(FailPicture::getType,SourceConstant.PIXIV_SOURCE)
-                    .and(query->query.eq(FailPicture::getStatus, PictureStatusConstant.SUCCESS_STATUS)
+                    .eq(FailPicture::getType, SourceConstant.PIXIV_SOURCE)
+                    .and(query -> query.eq(FailPicture::getStatus, PictureStatusConstant.SUCCESS_STATUS)
                             .or().eq(FailPicture::getStatus, PictureStatusConstant.COVER_STATUS)));
         }
     }
 
+    @Override
+//    @Async("threadPoolExecutor")
+    public void updateByNow() {
+        //https://www.pixiv.net/ajax/follow_latest/illust?p=1&mode=all&lang=zh&version=b461aaba721300d63f4506a979bf1c3e6c11df13
+        String version = RandomUtil.randomString(40);
+        InputStream inputStream = pixivUtils.getInputStream("https://www.pixiv.net/ajax/follow_latest/illust?p=1&mode=all&lang=zh&version=" + version);
+        String urlResult = pixivUtils.getUrlResult(inputStream);
+        Object body = JSONUtil.parseObj(urlResult).get("body");
+        Object page = JSONUtil.parseObj(body).get("page");
+        Object ids = JSONUtil.parseObj(page).get("ids");
+
+        // 截取所有的图片Id
+        Matcher matcher = Pattern.compile("[0-9]+").matcher(ids.toString());
+        List<Picture> pictureList = new ArrayList<>();
+        while (matcher.find()) {
+            String pictureId = matcher.group();
+            Picture picture = new Picture();
+            picture.setPictureId(Long.valueOf(pictureId));
+            picture.setPageCount(1);
+            picture.setType(SourceConstant.PIXIV_SOURCE);
+            picture.setStatus(PictureStatusConstant.DEFAULT_STATUS);
+            pictureList.add(picture);
+        }
+        if (pictureList.size()<=0){
+            return;
+        }
+        //获取数据库中的对应数据，用来排除已下载或正在下载的图片
+        List<Long> pictureIdList = pictureList.stream().map(Picture::getPictureId).collect(Collectors.toList());
+        List<Picture> dbPictureList = pictureService.list(new LambdaQueryWrapper<Picture>()
+                .in(Picture::getPictureId, pictureIdList)
+                .eq(Picture::getType, SourceConstant.PIXIV_SOURCE));
+        // 获取最终可能需要进行下载的图片
+        pictureList.removeAll(dbPictureList);
+        if (pictureList.size()<=0){
+            return;
+        }
+
+        // 获取数据库中的用户信息
+        Map<Long, String> dbUserList = userService.list(new LambdaQueryWrapper<User>().eq(User::getType, SourceConstant.PIXIV_SOURCE))
+                .stream().collect(Collectors.toMap(User::getUserId, User::getUserName));
+
+        // 获取最新更新中的用户Id
+        pictureList = pictureList.stream().map(picture -> pixivUtils.getPictureInfo(picture.getPictureId())).collect(Collectors.toList());
+        Set<Long> userIdList = pictureList.stream().map(Picture::getUserId).collect(Collectors.toSet());
+
+        // 获取最新更新中被标记的画师Id
+        userIdList.retainAll(dbUserList.keySet());
+        if (userIdList.size()<=0){
+            return;
+        }
+
+        pictureList = pictureList.stream().map(picture -> {
+            boolean flag = false;
+            for (Long userId : userIdList) {
+                if (userId.equals(picture.getUserId())) {
+                    // 替换成数据库中的userName
+                    picture.setUserName(dbUserList.get(userId));
+                    flag = true;
+                    break;
+                }
+            }
+            return flag ? picture : null;
+        }).collect(Collectors.toList());
+        // 去除null
+        pictureList.removeAll(Collections.singleton(null));
+        if (pictureList.size()<=0){
+            return;
+        }
+
+        ArrayList<Picture> tempPictureList = new ArrayList<>(pictureList);
+        pictureList = new ArrayList<>();
+        for (Picture picture : tempPictureList) {
+            if (picture.getPageCount() == 1) {
+                pictureList.add(picture);
+            } else {
+                for (int i = 0; i < picture.getPageCount(); i++) {
+                    Picture resultPicture = getResultPicture(i, picture);
+                    pictureList.add(resultPicture);
+                }
+            }
+        }
+
+        pictureService.saveBatch(pictureList);
+
+        downloadPicture(pictureList);
+    }
+
     /**
      * 更改作者名，更改数据库中的数据(user/picture)
-     * @param userId 用户id
+     *
+     * @param userId      用户id
      * @param newUserName 更新后的用户名
      * @return 更改结果
      */

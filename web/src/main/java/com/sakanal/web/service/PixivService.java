@@ -8,5 +8,7 @@ public interface PixivService {
 
     void againDownload();
 
+    void updateByNow();
+
     boolean changeUserName(Long userId, String userName);
 }

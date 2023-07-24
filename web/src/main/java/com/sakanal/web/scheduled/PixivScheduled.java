@@ -28,7 +28,7 @@ public class PixivScheduled {
             try {
                 if (lockService.setLock(pixivLockName)) {
                     log.info(pixivLockName + "上锁成功--开始更新数据");
-                    pixivService.update();
+                    pixivService.updateByNow();
                 } else {
                     log.info(pixivLockName + "上锁失败");
                 }

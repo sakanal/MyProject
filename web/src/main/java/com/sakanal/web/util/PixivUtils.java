@@ -1,7 +1,9 @@
 package com.sakanal.web.util;
 
+import cn.hutool.json.JSONUtil;
 import com.sakanal.web.config.MyPixivConfig;
 import com.sakanal.web.constant.PictureStatusConstant;
+import com.sakanal.web.constant.SourceConstant;
 import com.sakanal.web.entity.Picture;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -179,6 +181,63 @@ public class PixivUtils {
         //https://i.pximg.net/img-master/img/2022/07/06/00/13/07/99529275_p0.jpg
         src = src.replace("_custom1200", "").replace("custom-thumb", "img-original");
         return src.replace("img-master", "img-original");
+    }
+
+    /**
+     * 获取原图连接
+     *
+     * @param picture 图片，只需要图片id即可
+     * @return 如果是gif返回null，否则返回原图链接，不需要考虑后缀的问题
+     */
+    public Picture getPictureOriginalUrl(Picture picture) {
+        String url = "https://www.pixiv.net/ajax/illust/" + picture.getPictureId();
+        InputStream inputStream = getInputStream(url);
+        String result = getUrlResult(inputStream);
+        Object body = JSONUtil.parseObj(result).get("body");
+        String title = (String) JSONUtil.parseObj(body).get("title");
+        String originalURL = (String) JSONUtil.parseObj(JSONUtil.parseObj(body).get("urls")).get("original");
+        Integer type = (Integer) JSONUtil.parseObj(body).get("illustType");
+        picture.setTitle(title);
+        // type==2应该是gif文件
+        if (type != 2) {
+            picture.setSrc(originalURL);
+            return picture;
+        }
+        return null;
+    }
+
+    /**
+     * 根据图片id获取图片的所有所需信息，如果是图片组则只有首张图片的信息，pageCount会>1
+     *
+     * @param pictureId 图片id
+     * @return 该图片的所有下载所需的信息
+     */
+    public Picture getPictureInfo(Long pictureId) {
+        //
+        //https://www.pixiv.net/ajax/illust/110090680?lang=zh&version=b461aaba721300d63f4506a979bf1c3e6c11df13 可以获取到所有的数据
+        String url = "https://www.pixiv.net/ajax/illust/" + pictureId;
+
+        InputStream inputStream = getInputStream(url);
+        String result = getUrlResult(inputStream);
+//        String result = HttpUtil.get(url);
+        Object body = JSONUtil.parseObj(result).get("body");
+        String userId = (String) JSONUtil.parseObj(body).get("userId");
+        String userName = (String) JSONUtil.parseObj(body).get("userName");
+        String title = (String) JSONUtil.parseObj(body).get("title");
+        Integer type = (Integer) JSONUtil.parseObj(body).get("illustType");
+        Integer pageCount = (Integer) JSONUtil.parseObj(body).get("pageCount");
+        String originalURL = (String) JSONUtil.parseObj(JSONUtil.parseObj(body).get("urls")).get("original");
+        Picture picture = new Picture();
+        picture.setPictureId(pictureId);
+        picture.setUserId(Long.valueOf(userId));
+        picture.setUserName(userName);
+        picture.setTitle(title);
+        picture.setPageCount(pageCount);
+        picture.setSrc(originalURL);
+        picture.setType(SourceConstant.PIXIV_SOURCE);
+
+
+        return picture;
     }
 
 }

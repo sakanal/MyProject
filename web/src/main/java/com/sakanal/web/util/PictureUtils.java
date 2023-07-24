@@ -3,6 +3,7 @@ package com.sakanal.web.util;
 import com.sakanal.web.constant.SourceConstant;
 import com.sakanal.web.entity.Picture;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.net.URL;
@@ -65,6 +66,8 @@ public class PictureUtils {
     private static boolean pixiv(String downloadDir, Picture picture, InputStream inputStream){
         File file = createDir(downloadDir);
         if (file==null) return false;
+        if (picture.getSrc()==null && StringUtils.hasText(picture.getSrc()))
+            return false;
         String src = picture.getSrc();
         String[] split = src.split("\\.");
         String suffix = split[split.length - 1];
