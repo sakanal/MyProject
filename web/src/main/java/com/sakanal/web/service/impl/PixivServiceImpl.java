@@ -58,10 +58,12 @@ public class PixivServiceImpl implements PixivService {
     @Override
     @Async("threadPoolExecutor")
     public void download(Long userId){
+        // 获取用户名
         String userName = getUserName(userId);
         if (StringUtils.hasText(userName)){
             long hasUser = userService.count(new LambdaQueryWrapper<User>().eq(User::getUserId, userId));
             if (hasUser==0){
+                // 如果数据库中没有该用户的数据则进行新增数据
                 User user = new User();
                 user.setUserId(userId);
                 user.setUserName(userName);
@@ -69,16 +71,20 @@ public class PixivServiceImpl implements PixivService {
                 boolean save = userService.save(user);
                 log.info("画师数据持久化："+(save?"成功":"失败"));
             }
+            // 根据用户ID和用户名进行图片列表初始化，会获取除url和title的所有数据，对于图片组数据未进行处理
             List<Picture> pictureList = initPictureList(userId, userName);
             if (pictureList!=null && pictureList.size()>0){
+                // 获取正式使用的图片列表数据，并对图片组数据完成处理
                 pictureList = getResultPictureList(userId, pictureList);
                 if (pictureList!=null && pictureList.size()>0){
                     List<Picture> list = pictureService.list(new LambdaQueryWrapper<Picture>()
                             .eq(Picture::getType, SourceConstant.PIXIV_SOURCE)
                             .eq(Picture::getUserId, userId));
+                    // 剔除已完成下载的图片数据
                     pictureList.removeAll(list);
                     log.info("画师：" + userName + "\tid：" + userId + "\t" + pictureList.size() + "张新画作");
                     if (pictureList.size()>0){
+                        // 存在未在数据库中进行数据保存（未下载）的图片数据则进行数据保存并下载
                         boolean saveBatch = pictureService.saveBatch(pictureList);
                         log.info("画作数据持久化："+(saveBatch?"成功":"失败"));
                         downloadPicture(pictureList);
@@ -98,14 +104,17 @@ public class PixivServiceImpl implements PixivService {
         //从数据库中获取有关的作者id
         List<User> userList = userService.list(new LambdaQueryWrapper<User>().eq(User::getType, SourceConstant.PIXIV_SOURCE));
         userList.forEach(user -> {
+            // 针对每一个作者获取所有图片列表数据的基础数据，此时数据不存在url和title，并且未对图片组数据进行处理
             List<Picture> pictureList = initPictureList(user.getUserId(), user.getUserName());
             if (pictureList!=null && pictureList.size()>0){
                 LambdaQueryWrapper<Picture> lambdaQueryWrapper = new LambdaQueryWrapper<Picture>()
                         .eq(Picture::getType, SourceConstant.PIXIV_SOURCE)
                         .eq(Picture::getUserId, user.getUserId());
                 List<Picture> pictures = pictureService.list(lambdaQueryWrapper);
+                // 剔除已下载的图片数据
                 pictureList.removeAll(pictures);
                 if (pictureList.size()>0){
+                    // 获取最终所需的图片数据，并对图片组数据进行处理
                     pictureList = getResultPictureList(user.getUserId(),pictureList);
                     if (pictureList!=null && pictureList.size()>0){
                         boolean saveBatch = pictureService.saveBatch(pictureList);
@@ -126,11 +135,13 @@ public class PixivServiceImpl implements PixivService {
     @Override
 //    @Async("threadPoolExecutor")
     public void againDownload(){
+        // 获取未完成下载或下载失败的所有图片数据
         List<Picture> pictureList = pictureService.list(new LambdaQueryWrapper<Picture>()
                 .eq(Picture::getType, SourceConstant.PIXIV_SOURCE)
                 .and(query->query.eq(Picture::getStatus, PictureStatusConstant.DEFAULT_STATUS)
                         .or().eq(Picture::getStatus, PictureStatusConstant.FAIL_STATUS)));
         if (pictureList != null && pictureList.size() > 0) {
+            // 如果存在数据则进行下载
             downloadPicture(pictureList);
             failPictureService.saveOrUpdateBatch(pictureList);
             failPictureService.remove(new LambdaQueryWrapper<FailPicture>()
