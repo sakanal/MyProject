@@ -186,7 +186,7 @@ public class PixivServiceImpl implements PixivService {
         // 获取最终可能需要进行下载的图片
         pictureList.removeAll(dbPictureList);
         if (pictureList.size()<=0){
-            log.info("暂无所需更新的数据");
+            log.info("此页面所有数据已经完成更新");
             return;
         }
 
@@ -201,7 +201,7 @@ public class PixivServiceImpl implements PixivService {
         // 获取最新更新中被标记的画师Id
         userIdList.retainAll(dbUserList.keySet());
         if (userIdList.size()<=0){
-            log.info("被标记的画师更新已经完成下载");
+            log.info("暂无所需更新的数据");
             return;
         }
 
@@ -220,7 +220,7 @@ public class PixivServiceImpl implements PixivService {
         // 去除null
         pictureList.removeAll(Collections.singleton(null));
         if (pictureList.size()<=0){
-            log.info("被标记的画师更新已经完成下载-2");
+            log.info("被标记的画师更新已经完成下载");
             return;
         }
 
