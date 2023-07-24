@@ -164,6 +164,7 @@ public class PixivServiceImpl implements PixivService {
             pictureList.add(picture);
         }
         if (pictureList.size()<=0){
+            log.info("数据异常，没有获取到最新更新的任何相关数据");
             return;
         }
         //获取数据库中的对应数据，用来排除已下载或正在下载的图片
@@ -174,6 +175,7 @@ public class PixivServiceImpl implements PixivService {
         // 获取最终可能需要进行下载的图片
         pictureList.removeAll(dbPictureList);
         if (pictureList.size()<=0){
+            log.info("暂无所需更新的数据");
             return;
         }
 
@@ -188,6 +190,7 @@ public class PixivServiceImpl implements PixivService {
         // 获取最新更新中被标记的画师Id
         userIdList.retainAll(dbUserList.keySet());
         if (userIdList.size()<=0){
+            log.info("被标记的画师更新已经完成下载");
             return;
         }
 
@@ -206,6 +209,7 @@ public class PixivServiceImpl implements PixivService {
         // 去除null
         pictureList.removeAll(Collections.singleton(null));
         if (pictureList.size()<=0){
+            log.info("被标记的画师更新已经完成下载-2");
             return;
         }
 
@@ -225,6 +229,7 @@ public class PixivServiceImpl implements PixivService {
         pictureService.saveBatch(pictureList);
 
         downloadPicture(pictureList);
+        log.info("下载更新完成");
     }
 
     /**
@@ -340,7 +345,7 @@ public class PixivServiceImpl implements PixivService {
     }
 
     /**
-     * 获取最终的图片列表
+     * 如果list中的数据超过80个则进行分割，并调用方法获取下载所需最终的图片列表信息
      * @param userId 用户id
      * @param pictureList 原始图片列表 userId/userName/PictureId/pageCount/type/status
      * @return 最终图片列表 userId/userName/PictureId/title/src/pageCount/type/status
@@ -375,11 +380,11 @@ public class PixivServiceImpl implements PixivService {
     }
 
     /**
-     * 如果当前所需下载画作>80，pixiv无法获取，需要将其拆分获取数据
+     * 获取下载图片所需的完整信息，在此方法中list必须<=80，同时在此方法中会对图片组获取所有的对应数据（pageCount）
      * @param userId 用户id
      * @param pictureList 图片列表 userId/userName/PictureId/pageCount/type/status
      * @param resultPictureList 80条数据的图片列表
-     * @return 拆分为80条数据的图片列表
+     * @return 1-80条下载图片所需的相关数据，如果存在图片组数据则有可能会>80条数据
      */
     private boolean getPictureList(Long userId, List<Picture> pictureList, List<Picture> resultPictureList) {
         StringBuilder builder= new StringBuilder("https://www.pixiv.net/ajax/user/" + userId + "/profile/illusts?");
