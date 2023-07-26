@@ -32,7 +32,7 @@ public class PixivScheduled {
     }
 
     @TakeLock
-    @Scheduled(cron = "0 0 0/8 * * ?")
+    @Scheduled(cron = "30 0 0/8 * * ?")
     public void again() {
         log.info("开始进行补充更新");
         pixivService.againDownload();
