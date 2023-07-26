@@ -39,16 +39,16 @@ public class PixivScheduled {
         log.info("补充更新完成");
     }
 
-    @TakeLock
-    @Scheduled(cron = "0 59 23 * * ?")
-    public void cleanInvalidLock(){
-        if (lockService.checkLock(pixivLockName)){
-            Lock lock = lockService.getById(pixivLockName);
-            LocalDateTime availableTime = LocalDateTimeUtil.of(lock.getAvailableTime());
-            if (LocalDateTimeUtil.now().isAfter(availableTime)){
-                lockService.unsetLock(pixivLockName);
-            }
-        }
-    }
+//    @TakeLock
+//    @Scheduled(cron = "0 59 23 * * ?")
+//    public void cleanInvalidLock(){
+//        if (lockService.checkLock(pixivLockName)){
+//            Lock lock = lockService.getById(pixivLockName);
+//            LocalDateTime availableTime = LocalDateTimeUtil.of(lock.getAvailableTime());
+//            if (LocalDateTimeUtil.now().isAfter(availableTime)){
+//                lockService.unsetLock(pixivLockName);
+//            }
+//        }
+//    }
 }
 
