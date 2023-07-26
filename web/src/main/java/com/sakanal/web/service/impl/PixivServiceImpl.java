@@ -56,7 +56,6 @@ public class PixivServiceImpl implements PixivService {
      * 如果数据库中
      * @param userId 用户id
      */
-    @TakeLock
     @Override
     @Async("threadPoolExecutor")
     public void download(Long userId){
@@ -116,7 +115,6 @@ public class PixivServiceImpl implements PixivService {
      * 更新数据，从数据库中获取以及下载的作者数据，并以此为基准获取该作者为下载/记录的画作
      * 会对画作数据进行初始化到picture数据库中，图片状态为默认状态
      */
-    @TakeLock
     @Override
     @Async("threadPoolExecutor")
     public void update() {
@@ -155,7 +153,6 @@ public class PixivServiceImpl implements PixivService {
         log.info("更新完成");
     }
 
-    @TakeLock
     @Override
 //    @Async("threadPoolExecutor")
     public void againDownload(){
@@ -177,7 +174,6 @@ public class PixivServiceImpl implements PixivService {
         }
     }
 
-    @TakeLock
     @Override
 //    @Async("threadPoolExecutor")
     public void updateByNow() {
@@ -281,7 +277,6 @@ public class PixivServiceImpl implements PixivService {
      * @param newUserName 更新后的用户名
      * @return 更改结果
      */
-    @TakeLock
     @Override
     public boolean changeUserName(Long userId, String newUserName) {
         User user = userService.getOne(new LambdaQueryWrapper<User>()

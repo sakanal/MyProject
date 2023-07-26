@@ -1,6 +1,7 @@
 package com.sakanal.web.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sakanal.web.aspect.TakeLock;
 import com.sakanal.web.entity.User;
 import com.sakanal.web.service.PixivService;
 import com.sakanal.web.service.UserService;
@@ -20,6 +21,7 @@ public class PixivController {
     @Resource
     private UserService userService;
 
+    @TakeLock
     @RequestMapping("/downloadById/{userId}")
     public String downloadById(@PathVariable("userId") Long userId) {
         User user = userService.getOne(new LambdaQueryWrapper<User>().eq(User::getUserId, userId));
@@ -33,12 +35,14 @@ public class PixivController {
         return msg;
     }
 
+    @TakeLock
     @RequestMapping("/update")
     public String update() {
         pixivService.update();
         return "开始更新";
     }
 
+    @TakeLock
     @RequestMapping("/againDownload")
     public String againDownload() {
         pixivService.againDownload();
