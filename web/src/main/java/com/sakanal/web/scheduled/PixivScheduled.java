@@ -1,8 +1,6 @@
 package com.sakanal.web.scheduled;
 
-import cn.hutool.core.date.LocalDateTimeUtil;
 import com.sakanal.web.aspect.TakeLock;
-import com.sakanal.web.entity.Lock;
 import com.sakanal.web.service.LockService;
 import com.sakanal.web.service.PixivService;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +9,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.time.LocalDateTime;
 
 @Slf4j
 @Component

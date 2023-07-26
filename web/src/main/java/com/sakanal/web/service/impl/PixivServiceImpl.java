@@ -64,14 +64,20 @@ public class PixivServiceImpl implements PixivService {
         String userName = getUserName(userId);
         if (StringUtils.hasText(userName)){
             long hasUser = userService.count(new LambdaQueryWrapper<User>().eq(User::getUserId, userId));
-            if (hasUser==0){
+            if (hasUser == 0) {
                 // 如果数据库中没有该用户的数据则进行新增数据
                 User user = new User();
                 user.setUserId(userId);
                 user.setUserName(userName);
                 user.setType(SourceConstant.PIXIV_SOURCE);
                 boolean save = userService.save(user);
-                log.info("画师数据持久化："+(save?"成功":"失败"));
+                log.info("画师数据持久化：" + (save ? "成功" : "失败"));
+                if (!save) {
+                    log.error("请重新再试，参数为：{}", userId);
+                    return;
+                }
+            } else {
+                log.info("该作者已被标记，正在尝试更新数据");
             }
             // 根据用户ID和用户名进行图片列表初始化，会获取除url和title的所有数据，对于图片组数据未进行处理
             List<Picture> pictureList = initPictureList(userId, userName);
@@ -85,13 +91,23 @@ public class PixivServiceImpl implements PixivService {
                     // 剔除已完成下载的图片数据
                     pictureList.removeAll(list);
                     log.info("画师：" + userName + "\tid：" + userId + "\t" + pictureList.size() + "张新画作");
-                    if (pictureList.size()>0){
+                    if (pictureList.size() > 0) {
                         // 存在未在数据库中进行数据保存（未下载）的图片数据则进行数据保存并下载
                         boolean saveBatch = pictureService.saveBatch(pictureList);
-                        log.info("画作数据持久化："+(saveBatch?"成功":"失败"));
+                        log.info("画作数据持久化：" + (saveBatch ? "成功" : "失败"));
+                        if (!saveBatch) {
+                            log.error("请重新再试，参数为：{}", userId);
+                            return;
+                        }
                         downloadPicture(pictureList);
+                    } else {
+                        log.info("暂无画作数据更新");
                     }
+                } else {
+                    log.error("画作完整数据获取失败");
                 }
+            } else {
+                log.error("画作数据初始化失败");
             }
         }
     }
@@ -119,10 +135,14 @@ public class PixivServiceImpl implements PixivService {
                 if (pictureList.size()>0){
                     // 获取最终所需的图片数据，并对图片组数据进行处理
                     pictureList = getResultPictureList(user.getUserId(),pictureList);
-                    if (pictureList!=null && pictureList.size()>0){
+                    if (pictureList!=null && pictureList.size()>0) {
                         boolean saveBatch = pictureService.saveBatch(pictureList);
                         log.info("画师：" + user.getUserName() + "\tid：" + user.getUserId() + "\t" + pictureList.size() + "张新画作");
-                        log.info("图片数据持久化："+(saveBatch?"成功":"失败"));
+                        log.info("图片数据持久化：" + (saveBatch ? "成功" : "失败"));
+                        if (!saveBatch) {
+                            log.error("请重新再试，参数为：{}", user);
+                            return;
+                        }
                         downloadPicture(pictureList);
                     }
                 }else {
@@ -152,6 +172,8 @@ public class PixivServiceImpl implements PixivService {
                     .eq(FailPicture::getType, SourceConstant.PIXIV_SOURCE)
                     .and(query -> query.eq(FailPicture::getStatus, PictureStatusConstant.SUCCESS_STATUS)
                             .or().eq(FailPicture::getStatus, PictureStatusConstant.COVER_STATUS)));
+        } else {
+            log.info("暂无所需重新下载的画作");
         }
     }
 
@@ -252,7 +274,6 @@ public class PixivServiceImpl implements PixivService {
         log.info("下载更新完成");
     }
 
-    @TakeLock
     /**
      * 更改作者名，更改数据库中的数据(user/picture)
      *
@@ -260,6 +281,7 @@ public class PixivServiceImpl implements PixivService {
      * @param newUserName 更新后的用户名
      * @return 更改结果
      */
+    @TakeLock
     @Override
     public boolean changeUserName(Long userId, String newUserName) {
         User user = userService.getOne(new LambdaQueryWrapper<User>()
