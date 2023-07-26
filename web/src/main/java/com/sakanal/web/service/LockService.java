@@ -29,7 +29,7 @@ public interface LockService extends IService<Lock> {
     /**
      * 检测上锁结果
      * @param lockName 锁名
-     * @return 上锁成功--true，上锁失败--false
+     * @return 有效上锁需要等待--true，无效上锁可以尝试上锁--false
      */
     boolean checkLock(String lockName);
 
