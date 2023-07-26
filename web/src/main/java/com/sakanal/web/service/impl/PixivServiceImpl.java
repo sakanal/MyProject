@@ -157,6 +157,10 @@ public class PixivServiceImpl implements PixivService {
         //https://www.pixiv.net/ajax/follow_latest/illust?p=1&mode=all&lang=zh&version=b461aaba721300d63f4506a979bf1c3e6c11df13
         String version = RandomUtil.randomString(40);
         InputStream inputStream = pixivUtils.getInputStream("https://www.pixiv.net/ajax/follow_latest/illust?p=1&mode=all&lang=zh&version=" + version);
+        if (inputStream == null) {
+            log.error("获取更新数据失败");
+            return;
+        }
         String urlResult = pixivUtils.getUrlResult(inputStream);
         Object body = JSONUtil.parseObj(urlResult).get("body");
         Object page = JSONUtil.parseObj(body).get("page");
