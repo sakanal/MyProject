@@ -29,6 +29,11 @@ public class PixivUtils {
     @Resource
     private SeleniumUtils seleniumUtils;
 
+    /**
+     * 根据链接获取数据，通用
+     * @param url 链接
+     * @return inputStream数据
+     */
     public InputStream getInputStream(String url) {
         URLConnection urlConnection = getURLConnection(url);
         if (urlConnection == null) {
@@ -45,6 +50,11 @@ public class PixivUtils {
         return inputStream;
     }
 
+    /**
+     * 根据图片url获取图片数据
+     * @param picture 图片信息，需要其中的src数据
+     * @return 图片源数据
+     */
     public InputStream getInputStream(Picture picture) {
         URLConnection urlConnection = getURLConnection(picture.getSrc());
         if (urlConnection == null) {
@@ -96,6 +106,11 @@ public class PixivUtils {
         picture.setSrc(src);
     }
 
+    /**
+     * 获取连接并设置参数
+     * @param url 链接地址
+     * @return URLConnection
+     */
     private URLConnection getURLConnection(String url) {
         URLConnection urlConnection;
         try {
@@ -116,6 +131,11 @@ public class PixivUtils {
         return urlConnection;
     }
 
+    /**
+     * 转换链接数据
+     * @param inputStream 获取到的链接数据
+     * @return 转换后的String类型数据
+     */
     public String getUrlResult(InputStream inputStream) {
         InputStreamReader inputStreamReader;
         if (StringUtils.hasText(myPixivConfig.getCharsetName())) {
@@ -147,7 +167,13 @@ public class PixivUtils {
         return builder.toString();
     }
 
-    public void closeConnection(BufferedReader bis, InputStream is, InputStreamReader inputStreamReader) {
+    /**
+     * 关闭连接
+     * @param bufferedReader bufferedReader
+     * @param inputStream inputStream
+     * @param inputStreamReader inputStreamReader
+     */
+    public void closeConnection(BufferedReader bufferedReader, InputStream inputStream, InputStreamReader inputStreamReader) {
         if (inputStreamReader != null) {
             try {
                 inputStreamReader.close();
@@ -155,16 +181,16 @@ public class PixivUtils {
                 e.printStackTrace();
             }
         }
-        if (bis != null) {
+        if (bufferedReader != null) {
             try {
-                bis.close();
+                bufferedReader.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        if (is != null) {
+        if (inputStream != null) {
             try {
-                is.close();
+                inputStream.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -186,7 +212,6 @@ public class PixivUtils {
 
     /**
      * 获取原图连接
-     *
      * @param picture 图片，只需要图片id即可
      * @return 如果是gif返回null，否则返回原图链接，不需要考虑后缀的问题
      */
@@ -217,7 +242,6 @@ public class PixivUtils {
 
     /**
      * 根据图片id获取图片的所有所需信息，如果是图片组则只有首张图片的信息，pageCount会>1
-     *
      * @param pictureId 图片id
      * @return 该图片的所有下载所需的信息
      */
