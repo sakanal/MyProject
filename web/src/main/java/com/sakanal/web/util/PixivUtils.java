@@ -192,7 +192,15 @@ public class PixivUtils {
     public Picture getPictureOriginalUrl(Picture picture) {
         String url = "https://www.pixiv.net/ajax/illust/" + picture.getPictureId();
         InputStream inputStream = getInputStream(url);
+        if (inputStream==null){
+            log.error("通过链接获取数据失败");
+            return null;
+        }
         String result = getUrlResult(inputStream);
+        if (!StringUtils.hasText(result)){
+            log.error("数据解析失败");
+            return null;
+        }
         Object body = JSONUtil.parseObj(result).get("body");
         String title = (String) JSONUtil.parseObj(body).get("title");
         String originalURL = (String) JSONUtil.parseObj(JSONUtil.parseObj(body).get("urls")).get("original");
@@ -218,7 +226,15 @@ public class PixivUtils {
         String url = "https://www.pixiv.net/ajax/illust/" + pictureId;
 
         InputStream inputStream = getInputStream(url);
+        if (inputStream==null){
+            log.error("通过链接获取数据失败");
+            return null;
+        }
         String result = getUrlResult(inputStream);
+        if (!StringUtils.hasText(result)){
+            log.error("数据解析失败");
+            return null;
+        }
 //        String result = HttpUtil.get(url);
         Object body = JSONUtil.parseObj(result).get("body");
         String userId = (String) JSONUtil.parseObj(body).get("userId");
