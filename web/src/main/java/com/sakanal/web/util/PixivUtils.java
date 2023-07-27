@@ -91,21 +91,6 @@ public class PixivUtils {
         return inputStream;
     }
 
-    private void changeSuffix(Picture picture) {
-        // todo gif文件
-        String src = picture.getSrc();
-        String[] split = src.split("\\.");
-        String suffix = split[split.length - 1];
-        if ("jpg".equals(suffix)){
-            log.info("当前后缀为" + suffix+"改为png");
-            src = src.replace("jpg","png");
-        }else {
-            log.info("当前后缀为" + suffix+"改为jpg");
-            src = src.replace("png","jpg");
-        }
-        picture.setSrc(src);
-    }
-
     /**
      * 获取连接并设置参数
      * @param url 链接地址
