@@ -50,30 +50,31 @@ public class PixivUtils {
         if (urlConnection == null) {
             return null;
         }
-
         InputStream inputStream;
         try {
             inputStream = urlConnection.getInputStream();
         } catch (IOException e) {
             log.info("获取数据失败，可能是后缀不匹配，也可能是网络问题");
-            log.info("第一次尝试：再次建立连接");
+            // 获取源链接
             picture.setStatus(PictureStatusConstant.FAIL_STATUS);
-            try {
-                inputStream = urlConnection.getInputStream();
-            } catch (IOException ex) {
-                log.info("第二次尝试：修改后缀");
-                changeSuffix(picture);
-                urlConnection = getURLConnection(picture.getSrc());
-                if (urlConnection == null) {
-                    return null;
-                }
+            boolean flag = getPictureOriginalUrl(picture);
+            if (flag) {
+                // 成功获取到源链接
                 try {
+                    urlConnection = getURLConnection(picture.getSrc());
+                    if (urlConnection == null) {
+                        return null;
+                    }
                     inputStream = urlConnection.getInputStream();
-                } catch (IOException exc) {
-                    log.info("两次尝试都失败，等待后续补充下载");
-                    exc.printStackTrace();
+                } catch (IOException exception) {
+                    log.error("获取数据再次失败，此次大概率为网络问题");
+                    exception.printStackTrace();
                     return null;
                 }
+            } else {
+                // 获取链接失败，应该是gif文件
+                log.error("获取数据失败，大概率为gif文件，需要自主下载");
+                return null;
             }
         }
         picture.setStatus(PictureStatusConstant.DEFAULT_STATUS);
@@ -189,17 +190,17 @@ public class PixivUtils {
      * @param picture 图片，只需要图片id即可
      * @return 如果是gif返回null，否则返回原图链接，不需要考虑后缀的问题
      */
-    public Picture getPictureOriginalUrl(Picture picture) {
+    public boolean getPictureOriginalUrl(Picture picture) {
         String url = "https://www.pixiv.net/ajax/illust/" + picture.getPictureId();
         InputStream inputStream = getInputStream(url);
-        if (inputStream==null){
+        if (inputStream == null) {
             log.error("通过链接获取数据失败");
-            return null;
+            return false;
         }
         String result = getUrlResult(inputStream);
-        if (!StringUtils.hasText(result)){
+        if (!StringUtils.hasText(result)) {
             log.error("数据解析失败");
-            return null;
+            return false;
         }
         Object body = JSONUtil.parseObj(result).get("body");
         String title = (String) JSONUtil.parseObj(body).get("title");
@@ -209,9 +210,9 @@ public class PixivUtils {
         // type==2应该是gif文件
         if (type != 2) {
             picture.setSrc(originalURL);
-            return picture;
+            return true;
         }
-        return null;
+        return false;
     }
 
     /**
