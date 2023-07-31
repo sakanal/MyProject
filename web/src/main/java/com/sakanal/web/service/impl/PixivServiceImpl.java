@@ -223,6 +223,10 @@ public class PixivServiceImpl implements PixivService {
 
         // 获取最新更新中的用户Id
         pictureList = pictureList.stream().map(picture -> pixivUtils.getPictureInfo(picture.getPictureId())).collect(Collectors.toList());
+        if(pictureList.size()<=0){
+            log.info("获取最新数据为空");
+            return;
+        }
         Set<Long> userIdList = pictureList.stream().map(Picture::getUserId).collect(Collectors.toSet());
 
         // 获取最新更新中被标记的画师Id
