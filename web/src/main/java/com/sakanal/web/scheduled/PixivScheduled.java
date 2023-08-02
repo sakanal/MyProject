@@ -15,12 +15,8 @@ import javax.annotation.Resource;
 public class PixivScheduled {
     @Resource
     private PixivService pixivService;
-    @Resource
-    private LockService lockService;
-    @Value("${system.lock.pixiv}")
-    private String pixivLockName;
 
-    @TakeLock
+    @TakeLock(lockName = "pixivLock")
     @Scheduled(cron = "0 0 0/3 * * ? ")
     public void upload() {
         log.info("开始进行自动更新");
@@ -28,7 +24,7 @@ public class PixivScheduled {
         log.info("自动更新完成");
     }
 
-    @TakeLock
+    @TakeLock(lockName = "pixivLock")
     @Scheduled(cron = "30 0 0/8 * * ?")
     public void again() {
         log.info("开始进行补充更新");

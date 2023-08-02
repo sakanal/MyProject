@@ -21,7 +21,7 @@ public class PixivController {
     @Resource
     private UserService userService;
 
-    @TakeLock
+    @TakeLock(lockName = "pixivLock")
     @RequestMapping("/downloadById/{userId}")
     public String downloadById(@PathVariable("userId") Long userId) {
         User user = userService.getOne(new LambdaQueryWrapper<User>().eq(User::getUserId, userId));
@@ -35,14 +35,14 @@ public class PixivController {
         return msg;
     }
 
-    @TakeLock
+    @TakeLock(lockName = "pixivLock")
     @RequestMapping("/update")
     public String update() {
         pixivService.update();
         return "开始更新";
     }
 
-    @TakeLock
+    @TakeLock(lockName = "pixivLock")
     @RequestMapping("/againDownload")
     public String againDownload() {
         pixivService.againDownload();

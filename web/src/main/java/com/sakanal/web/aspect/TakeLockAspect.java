@@ -5,8 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.annotation.Pointcut;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -17,33 +15,27 @@ import javax.annotation.Resource;
 public class TakeLockAspect {
     @Resource
     private LockService lockService;
-    @Value("${system.lock.pixiv}")
-    private String pixivLockName;
 
-    @Pointcut("@annotation(TakeLock)")
-    public void toLock() {
-    }
-
-    @Around("toLock()")
-    public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
+    @Around("@annotation(takeLock)")
+    public Object around(ProceedingJoinPoint joinPoint, TakeLock takeLock) throws Throwable {
         //判断是否可以上锁
-        if (!lockService.checkLock(pixivLockName)) {
+        if (!lockService.checkLock(takeLock.lockName())) {
             try {
-                if (lockService.setLock(pixivLockName)) {
-                    log.info(pixivLockName + "上锁成功");
+                if (lockService.setLock(takeLock.lockName())) {
+                    log.info(takeLock.lockName() + "上锁成功");
                     long start = System.currentTimeMillis();
                     Object proceed = joinPoint.proceed();
                     long end = System.currentTimeMillis();
                     log.info("耗时" + ((end - start) / 1000) + "秒");
                     return proceed;
                 } else {
-                    log.info(pixivLockName + "上锁失败");
+                    log.info(takeLock.lockName() + "上锁失败");
                 }
             } finally {
-                if (lockService.unsetLock(pixivLockName)) {
-                    log.info(pixivLockName + "解锁成功");
+                if (lockService.unsetLock(takeLock.lockName())) {
+                    log.info(takeLock.lockName() + "解锁成功");
                 } else {
-                    log.info(pixivLockName + "解锁失败");
+                    log.info(takeLock.lockName() + "解锁失败");
                 }
             }
         } else {

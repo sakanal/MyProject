@@ -13,8 +13,6 @@ system:
   proxyHost: 127.0.0.1
   proxyPort: 7890
   baseDownloadDir: E:\\图片
-  lock:
-    pixiv: pixivLock
   pixiv:
     request-header:
       User-Agent: Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11
