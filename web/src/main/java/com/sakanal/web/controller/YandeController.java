@@ -1,6 +1,7 @@
 package com.sakanal.web.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sakanal.web.aspect.TakeLock;
 import com.sakanal.web.constant.SourceConstant;
 import com.sakanal.web.entity.User;
 import com.sakanal.web.service.UserService;
@@ -21,6 +22,7 @@ public class YandeController {
     @Resource
     private YandeService yandeService;
 
+    @TakeLock(lockName = "yandeLock")
     @RequestMapping("/downloadByTag/{tag}")
     public String downloadByTag(@PathVariable String tag){
         String msg="开始下载";
@@ -36,6 +38,7 @@ public class YandeController {
         return msg;
     }
 
+    @TakeLock(lockName = "yandeLock")
     @RequestMapping("/upload")
     public String upload(){
         yandeService.againDownload();
