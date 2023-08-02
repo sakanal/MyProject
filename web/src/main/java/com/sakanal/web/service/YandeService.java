@@ -4,4 +4,6 @@ public interface YandeService {
     void download(String tags);
 
     void againDownload();
+
+    void update();
 }

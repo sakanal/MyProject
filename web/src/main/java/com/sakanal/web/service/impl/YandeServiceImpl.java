@@ -17,7 +17,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -50,7 +49,6 @@ public class YandeServiceImpl implements YandeService {
      * @param tags 搜索项，最终会作为用户名使用
      */
     @Override
-    @Async("threadPoolExecutor")
     public void download(String tags) {
         StringBuilder builder = new StringBuilder(YANDE_URL);
         String tryGetTotalPageURL = builder.append("post").append("?tags=").append(tags).toString();
@@ -67,6 +65,9 @@ public class YandeServiceImpl implements YandeService {
                     String pageURL = baseURL + "&page=" + page;
                     Document document = Jsoup.parse(new URL(pageURL), 10 * 1000);
                     List<Picture> pictures = initPictureList(document, tags);
+                    if (pictures == null) {
+                        break;
+                    }
                     for (int i = 0; i < pictures.size(); i++) {
                         log.info("第" + page + "页，第" + (i + 1) + "张图片开始下载");
                         boolean download = download(pictures.get(i));
@@ -100,7 +101,6 @@ public class YandeServiceImpl implements YandeService {
     }
 
     @Override
-    @Async("threadPoolExecutor")
     public void againDownload() {
         List<Picture> pictureList = pictureService.list(new LambdaQueryWrapper<Picture>()
                 .eq(Picture::getType, YANDE_SOURCE)
@@ -120,6 +120,14 @@ public class YandeServiceImpl implements YandeService {
                     .eq(FailPicture::getType, YANDE_SOURCE)
                     .and(query -> query.eq(FailPicture::getStatus, PictureStatusConstant.SUCCESS_STATUS)
                             .or().eq(FailPicture::getStatus, PictureStatusConstant.COVER_STATUS)));
+        }
+    }
+
+    @Override
+    public void update() {
+        List<User> userList = userService.list(new LambdaQueryWrapper<User>().eq(User::getType, YANDE_SOURCE));
+        if (userList != null && userList.size() > 0) {
+            userList.forEach(user -> download(user.getUserName()));
         }
     }
 
@@ -219,6 +227,7 @@ public class YandeServiceImpl implements YandeService {
             log.info("图片数据持久化:" + (saveBatch ? "成功" : "失败"));
         } else {
             log.info("该页数据过去已经下载完成");
+            return null;
         }
 
         return pictureList;
