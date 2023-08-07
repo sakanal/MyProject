@@ -57,7 +57,7 @@ public class PixivServiceImpl implements PixivService {
      * @param userId 用户id
      */
     @Override
-    @Async("threadPoolExecutor")
+//    @Async("threadPoolExecutor")
     public void download(Long userId){
         // 获取用户名
         String userName = getUserName(userId);
@@ -116,7 +116,7 @@ public class PixivServiceImpl implements PixivService {
      * 会对画作数据进行初始化到picture数据库中，图片状态为默认状态
      */
     @Override
-    @Async("threadPoolExecutor")
+//    @Async("threadPoolExecutor")
     public void update() {
         //从数据库中获取有关的作者id
         List<User> userList = userService.list(new LambdaQueryWrapper<User>().eq(User::getType, SourceConstant.PIXIV_SOURCE));
