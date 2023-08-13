@@ -151,10 +151,13 @@ public class YandeServiceImpl implements YandeService {
                 log.info("创建文件夹失败，请检查路径是否正确");
                 total = 0;
             } else {
-                User user = new User();
-                user.setUserName(tags);
-                user.setType(YANDE_SOURCE);
-                userService.save(user);
+                List<User> list = userService.list(new LambdaQueryWrapper<User>().eq(User::getUserName, tags).eq(User::getType, YANDE_SOURCE).last("limit 1"));
+                if (list.size()==0){
+                    User user = new User();
+                    user.setUserName(tags);
+                    user.setType(YANDE_SOURCE);
+                    userService.save(user);
+                }
             }
         } else {
             //文件夹存在，过去曾经下载过该tags
