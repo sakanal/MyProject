@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -26,12 +27,18 @@ public class YandeController {
     @RequestMapping("/downloadByTag/{tag}")
     public String downloadByTag(@PathVariable String tag){
         String msg="开始下载";
-        User user = userService.list(new LambdaQueryWrapper<User>()
+        List<User> userList = userService.list(new LambdaQueryWrapper<User>()
                 .eq(User::getUserName, tag)
                 .eq(User::getType, SourceConstant.YANDE_SOURCE)
                 .last("limit 1")
-        ).get(0);
-        if (user!=null){
+        );
+        User user;
+        if(userList.isEmpty()){
+            user = new User();
+            user.setUserName(tag);
+            user.setType(SourceConstant.YANDE_SOURCE);
+            userService.save(user);
+        }else {
             msg="该标签已记录，开始尝试更新";
         }
         yandeService.download(tag);

@@ -86,7 +86,7 @@ public class YandeServiceImpl implements YandeService {
                         }
                     }
                 }
-                if (failPictureList.size() > 0) {
+                if (!failPictureList.isEmpty()) {
                     failPictureService.saveBatch(failPictureList);
                 }
 
@@ -106,7 +106,7 @@ public class YandeServiceImpl implements YandeService {
                 .eq(Picture::getType, YANDE_SOURCE)
                 .and(query -> query.eq(Picture::getStatus, PictureStatusConstant.DEFAULT_STATUS)
                         .or().eq(Picture::getStatus, PictureStatusConstant.FAIL_STATUS)));
-        if (pictureList != null && pictureList.size() > 0) {
+        if (pictureList != null && !pictureList.isEmpty()) {
             String tempDir = this.baseDownloadDir;
             pictureList.forEach(picture -> {
                 baseDownloadDir = tempDir + "\\" + YANDE_SOURCE + "\\" + picture.getUserName() + "\\";
@@ -126,7 +126,7 @@ public class YandeServiceImpl implements YandeService {
     @Override
     public void update() {
         List<User> userList = userService.list(new LambdaQueryWrapper<User>().eq(User::getType, YANDE_SOURCE));
-        if (userList != null && userList.size() > 0) {
+        if (userList != null && !userList.isEmpty()) {
             userList.forEach(user -> download(user.getUserName()));
         }
     }
@@ -140,7 +140,7 @@ public class YandeServiceImpl implements YandeService {
     private int getPages(Document pageDocument, String tags) {
         int total = 0;
         Elements pagination = pageDocument.getElementsByClass("pagination");
-        if (pagination.size() != 0) {
+        if (!pagination.isEmpty()) {
             Elements a = pagination.get(0).getElementsByTag("a");
             total = Integer.parseInt(a.get(a.size() - 1 - 1).text());
             log.info("总页数为:" + total);
@@ -152,7 +152,7 @@ public class YandeServiceImpl implements YandeService {
                 total = 0;
             } else {
                 List<User> list = userService.list(new LambdaQueryWrapper<User>().eq(User::getUserName, tags).eq(User::getType, YANDE_SOURCE).last("limit 1"));
-                if (list.size()==0){
+                if (list.isEmpty()){
                     User user = new User();
                     user.setUserName(tags);
                     user.setType(YANDE_SOURCE);
@@ -168,7 +168,7 @@ public class YandeServiceImpl implements YandeService {
                     .and(query -> query.eq(Picture::getStatus, PictureStatusConstant.DEFAULT_STATUS)
                             .or().eq(Picture::getStatus, PictureStatusConstant.FAIL_STATUS));
             List<Picture> pictureList = pictureService.list(lambdaQueryWrapper);
-            if (pictureList.size() > 0) {
+            if (!pictureList.isEmpty()) {
                 log.info("重新下载失败的图片");
                 List<FailPicture> failPictures = new ArrayList<>();
                 pictureList.forEach(picture -> {
@@ -222,10 +222,9 @@ public class YandeServiceImpl implements YandeService {
             pictureList.add(picture);
         }
 
-        LambdaQueryWrapper<Picture> lambdaQueryWrapper = new LambdaQueryWrapper<Picture>().eq(Picture::getUserName, tags);
-        List<Picture> dataSourcePictureList = pictureService.list(lambdaQueryWrapper);
+        List<Picture> dataSourcePictureList = pictureService.list(new LambdaQueryWrapper<Picture>().eq(Picture::getUserName, tags).eq(Picture::getType, YANDE_SOURCE));
         pictureList.removeAll(dataSourcePictureList);
-        if (pictureList.size() > 0) {
+        if (!pictureList.isEmpty()) {
             boolean saveBatch = pictureService.saveBatch(pictureList);
             log.info("图片数据持久化:" + (saveBatch ? "成功" : "失败"));
         } else {
