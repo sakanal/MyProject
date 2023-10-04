@@ -46,6 +46,7 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 下载图片
+     *
      * @param tags 搜索项，最终会作为用户名使用
      */
     @Override
@@ -55,8 +56,8 @@ public class YandeServiceImpl implements YandeService {
         String baseURL = builder.toString();
         try {
             Document pageDocument = Jsoup.parse(new URL(tryGetTotalPageURL), 10 * 1000);
-            baseDownloadDir = baseDownloadDir + "\\" + YANDE_SOURCE + "\\" + tags + "\\";
-            int pages = getPages(pageDocument, tags);
+            String tempDownloadDir = baseDownloadDir + "\\" + YANDE_SOURCE + "\\" + tags + "\\";
+            int pages = getPages(pageDocument, tags, tempDownloadDir);
             if (pages != 0) {
                 long start = System.currentTimeMillis();
 
@@ -66,11 +67,11 @@ public class YandeServiceImpl implements YandeService {
                     Document document = Jsoup.parse(new URL(pageURL), 10 * 1000);
                     List<Picture> pictures = initPictureList(document, tags);
                     if (pictures == null) {
-                        break;
+                        continue;
                     }
                     for (int i = 0; i < pictures.size(); i++) {
                         log.info("第" + page + "页，第" + (i + 1) + "张图片开始下载");
-                        boolean download = download(pictures.get(i));
+                        boolean download = download(pictures.get(i), tempDownloadDir);
                         if (download) {
                             log.info("第" + page + "页，第" + (i + 1) + "张图片完成");
                             pictures.get(i).setStatus(PictureStatusConstant.SUCCESS_STATUS);
@@ -102,24 +103,34 @@ public class YandeServiceImpl implements YandeService {
 
     @Override
     public void againDownload() {
+        // 获取数据中状态为default和fail的数据
         List<Picture> pictureList = pictureService.list(new LambdaQueryWrapper<Picture>()
                 .eq(Picture::getType, YANDE_SOURCE)
                 .and(query -> query.eq(Picture::getStatus, PictureStatusConstant.DEFAULT_STATUS)
                         .or().eq(Picture::getStatus, PictureStatusConstant.FAIL_STATUS)));
         if (pictureList != null && !pictureList.isEmpty()) {
-            String tempDir = this.baseDownloadDir;
-            pictureList.forEach(picture -> {
-                baseDownloadDir = tempDir + "\\" + YANDE_SOURCE + "\\" + picture.getUserName() + "\\";
-                if (download(picture)) {
+            log.info("当前有" + pictureList.size() + "图片需要进行补充下载");
+            String tempDownloadDir;
+            int i = 1;
+            for (Picture picture : pictureList) {
+                tempDownloadDir = this.baseDownloadDir + "\\" + YANDE_SOURCE + "\\" + picture.getUserName() + "\\";
+                // 如果src是页面数据会去获取实际的图片数据，如果src是图片数据则直接进行下载
+                if (download(picture, tempDownloadDir)) {
+                    log.info("第" + i + "张图片完成下载");
                     picture.setStatus(PictureStatusConstant.SUCCESS_STATUS);
+                } else {
+                    log.error("第" + i + "张图片下载失败");
                 }
-            });
+                i++;
+            }
             pictureService.updateBatchById(pictureList);
             failPictureService.saveOrUpdateBatch(pictureList);
             failPictureService.remove(new LambdaQueryWrapper<FailPicture>()
                     .eq(FailPicture::getType, YANDE_SOURCE)
                     .and(query -> query.eq(FailPicture::getStatus, PictureStatusConstant.SUCCESS_STATUS)
                             .or().eq(FailPicture::getStatus, PictureStatusConstant.COVER_STATUS)));
+        } else {
+            log.info("暂无图片需要补充下载");
         }
     }
 
@@ -137,7 +148,7 @@ public class YandeServiceImpl implements YandeService {
      * @param pageDocument 页面数据
      * @param tags         搜索项，作为作者名保存
      */
-    private int getPages(Document pageDocument, String tags) {
+    private int getPages(Document pageDocument, String tags, String downloadDir) {
         int total = 0;
         Elements pagination = pageDocument.getElementsByClass("pagination");
         if (!pagination.isEmpty()) {
@@ -145,14 +156,14 @@ public class YandeServiceImpl implements YandeService {
             total = Integer.parseInt(a.get(a.size() - 1 - 1).text());
             log.info("总页数为:" + total);
         }
-        File file = new File(baseDownloadDir);
+        File file = new File(downloadDir);
         if (!file.exists()) {
             if (!file.mkdirs()) {
                 log.info("创建文件夹失败，请检查路径是否正确");
                 total = 0;
             } else {
                 List<User> list = userService.list(new LambdaQueryWrapper<User>().eq(User::getUserName, tags).eq(User::getType, YANDE_SOURCE).last("limit 1"));
-                if (list.isEmpty()){
+                if (list.isEmpty()) {
                     User user = new User();
                     user.setUserName(tags);
                     user.setType(YANDE_SOURCE);
@@ -173,7 +184,7 @@ public class YandeServiceImpl implements YandeService {
                 List<FailPicture> failPictures = new ArrayList<>();
                 pictureList.forEach(picture -> {
                     log.info("补充下载：" + picture.getPictureId() + "开始下载");
-                    boolean download = download(picture);
+                    boolean download = download(picture, downloadDir);
                     if (!download) {
                         log.info("补充下载：" + picture.getPictureId() + "下载失败，等待后续下载");
                         FailPicture failPicture = new FailPicture(picture);
@@ -241,14 +252,14 @@ public class YandeServiceImpl implements YandeService {
      *
      * @param picture 图片数据
      */
-    private boolean download(Picture picture) {
+    private boolean download(Picture picture, String downloadDir) {
         boolean check = isPictureInfoURL(picture);
         if (check) {
             boolean pictureInfo = getPictureInfo(picture);
             if (!pictureInfo)
                 return false;
         }
-        return PictureUtils.downloadPicture(baseDownloadDir, picture, null, YANDE_SOURCE);
+        return PictureUtils.downloadPicture(downloadDir, picture, null, YANDE_SOURCE);
 
     }
 
