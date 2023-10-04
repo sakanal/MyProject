@@ -26,29 +26,30 @@ public class YandeController {
     @TakeLock(lockName = "yandeLock")
     @RequestMapping("/downloadByTag/{tag}")
     public String downloadByTag(@PathVariable String tag){
-        String msg="开始下载";
+        String msg="完成下载";
         List<User> userList = userService.list(new LambdaQueryWrapper<User>()
                 .eq(User::getUserName, tag)
                 .eq(User::getType, SourceConstant.YANDE_SOURCE)
                 .last("limit 1")
         );
-        User user;
-        if(userList.isEmpty()){
-            user = new User();
-            user.setUserName(tag);
-            user.setType(SourceConstant.YANDE_SOURCE);
-            userService.save(user);
-        }else {
-            msg="该标签已记录，开始尝试更新";
+        if (!userList.isEmpty()){
+            msg="该标签已记录，完成更新";
         }
         yandeService.download(tag);
         return msg;
     }
 
     @TakeLock(lockName = "yandeLock")
+    @RequestMapping("/againDownload")
+    public String againDownload(){
+        yandeService.againDownload();
+        return "完成补充更新";
+    }
+
+    @TakeLock(lockName = "yandeLock")
     @RequestMapping("/upload")
     public String upload(){
         yandeService.againDownload();
-        return "开始更新";
+        return "完成更新";
     }
 }

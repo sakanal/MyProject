@@ -39,7 +39,7 @@ public class TakeLockAspect {
                 }
             }
         } else {
-            log.info("正在进行数据更新，请稍后");
+            log.info("正在进行数据更新，请稍后再试");
         }
         return null;
     }
