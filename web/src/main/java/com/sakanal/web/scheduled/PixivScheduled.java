@@ -1,10 +1,8 @@
 package com.sakanal.web.scheduled;
 
 import com.sakanal.web.aspect.TakeLock;
-import com.sakanal.web.service.LockService;
 import com.sakanal.web.service.PixivService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -32,16 +30,5 @@ public class PixivScheduled {
         log.info("补充更新完成");
     }
 
-//    @TakeLock
-//    @Scheduled(cron = "0 59 23 * * ?")
-//    public void cleanInvalidLock(){
-//        if (lockService.checkLock(pixivLockName)){
-//            Lock lock = lockService.getById(pixivLockName);
-//            LocalDateTime availableTime = LocalDateTimeUtil.of(lock.getAvailableTime());
-//            if (LocalDateTimeUtil.now().isAfter(availableTime)){
-//                lockService.unsetLock(pixivLockName);
-//            }
-//        }
-//    }
 }
 

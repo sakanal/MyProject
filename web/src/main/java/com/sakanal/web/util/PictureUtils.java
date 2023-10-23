@@ -38,8 +38,6 @@ public class PictureUtils {
         String fileName=picture.getPictureId()+"."+suffix;
 
         // 再获取总页数的时候就会创建文件夹
-//        File file = createDir(downloadDir);
-//        if (file==null) return false;
 
         FileOutputStream outputStream;
         try {
@@ -66,7 +64,7 @@ public class PictureUtils {
     private static boolean pixiv(String downloadDir, Picture picture, InputStream inputStream){
         File file = createDir(downloadDir);
         if (file==null) return false;
-        if (picture.getSrc()==null && StringUtils.hasText(picture.getSrc()))
+        if (StringUtils.hasText(picture.getSrc()))
             return false;
         String src = picture.getSrc();
         String[] split = src.split("\\.");

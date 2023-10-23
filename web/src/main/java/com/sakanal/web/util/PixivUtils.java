@@ -21,8 +21,6 @@ import java.util.Set;
 @Configuration
 //@ConfigurationProperties(prefix = "system.pixiv")
 public class PixivUtils {
-//    private Map<String, String> requestHeader;
-//    private String charsetName;
 
     @Resource
     private MyPixivConfig myPixivConfig;
