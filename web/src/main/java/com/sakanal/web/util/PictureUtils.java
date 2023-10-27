@@ -64,7 +64,7 @@ public class PictureUtils {
     private static boolean pixiv(String downloadDir, Picture picture, InputStream inputStream){
         File file = createDir(downloadDir);
         if (file==null) return false;
-        if (StringUtils.hasText(picture.getSrc()))
+        if (!StringUtils.hasText(picture.getSrc()))
             return false;
         String src = picture.getSrc();
         String[] split = src.split("\\.");
