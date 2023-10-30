@@ -221,7 +221,10 @@ public class PixivServiceImpl implements PixivService {
                 .stream().collect(Collectors.toMap(User::getUserId, User::getUserName));
 
         // 获取最新更新中的用户Id
-        pictureList = pictureList.stream().map(picture -> pixivUtils.getPictureInfo(picture.getPictureId())).collect(Collectors.toList());
+        pictureList = pictureList.stream()
+                .map(picture -> pixivUtils.getPictureInfo(picture.getPictureId()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
         if (pictureList.isEmpty()) {
             log.info("获取最新数据为空");
             return;
