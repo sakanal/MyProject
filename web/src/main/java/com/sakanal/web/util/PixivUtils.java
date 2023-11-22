@@ -220,6 +220,7 @@ public class PixivUtils {
             picture.setSrc(originalURL);
             return true;
         }
+        closeConnection(null,inputStream,null);
         return false;
     }
 
@@ -260,7 +261,7 @@ public class PixivUtils {
         picture.setSrc(originalURL);
         picture.setType(SourceConstant.PIXIV_SOURCE);
 
-
+        closeConnection(null,inputStream,null);
         return picture;
     }
 
