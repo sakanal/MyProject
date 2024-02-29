@@ -183,13 +183,19 @@ public class PixivServiceImpl implements PixivService {
             log.error("获取更新数据失败");
             return;
         }
-        String urlResult = pixivUtils.getUrlResult(inputStream);
-        Object body = JSONUtil.parseObj(urlResult).get("body");
-        Object page = JSONUtil.parseObj(body).get("page");
-        Object ids = JSONUtil.parseObj(page).get("ids");
+        Matcher matcher;
+        try {
+            String urlResult = pixivUtils.getUrlResult(inputStream);
+            Object body = JSONUtil.parseObj(urlResult).get("body");
+            Object page = JSONUtil.parseObj(body).get("page");
+            Object ids = JSONUtil.parseObj(page).get("ids");
 
-        // 截取所有的图片Id
-        Matcher matcher = Pattern.compile("[0-9]+").matcher(ids.toString());
+            // 截取所有的图片Id
+            matcher = Pattern.compile("[0-9]+").matcher(ids.toString());
+        } catch (Exception e) {
+            log.error("未获取到正确的数据,解析失败",e);
+            return;
+        }
         List<Picture> pictureList = new ArrayList<>();
         while (matcher.find()) {
             String pictureId = matcher.group();
@@ -446,9 +452,15 @@ public class PixivServiceImpl implements PixivService {
         String pictureResult = pixivUtils.getUrlResult(inputStream);
         if (!StringUtils.hasText(pictureResult)) return true;
 
-        Object body = JSONUtil.parseObj(pictureResult).get("body");
-        Object works = JSONUtil.parseObj(body).get("works");
-        JSONObject jsonObject = JSONUtil.parseObj(works);
+        JSONObject jsonObject;
+        try {
+            Object body = JSONUtil.parseObj(pictureResult).get("body");
+            Object works = JSONUtil.parseObj(body).get("works");
+            jsonObject = JSONUtil.parseObj(works);
+        } catch (Exception e) {
+            log.error("pictureResult = {}",pictureResult,e);
+            return true;
+        }
         for (Picture oldPicture : pictureList) {
             Object value = jsonObject.get(oldPicture.getPictureId().toString());
             JSONObject tempJsonObject = JSONUtil.parseObj(value);
