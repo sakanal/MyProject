@@ -20,8 +20,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import javax.net.ssl.SSLHandshakeException;
 import java.io.File;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +57,16 @@ public class YandeServiceImpl implements YandeService {
         String tryGetTotalPageURL = builder.append("post").append("?tags=").append(tags).toString();
         String baseURL = builder.toString();
         try {
-            Document pageDocument = Jsoup.parse(new URL(tryGetTotalPageURL), 10 * 1000);
+            Document pageDocument;
+            try {
+                pageDocument = Jsoup.parse(new URL(tryGetTotalPageURL), 10 * 1000);
+            } catch (SSLHandshakeException ssl) {
+                log.error("SSLHandshakeException异常,message={}",ssl.getMessage());
+                return;
+            }catch (SocketTimeoutException socketTimeoutException){
+                log.error("SocketTimeoutException异常,message={}",socketTimeoutException.getMessage());
+                return;
+            }
             String tempDownloadDir = baseDownloadDir + "\\" + YANDE_SOURCE + "\\" + tags + "\\";
             int pages = getPages(pageDocument, tags, tempDownloadDir);
             if (pages != 0) {

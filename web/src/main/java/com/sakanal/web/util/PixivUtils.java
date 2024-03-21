@@ -11,7 +11,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
+import javax.net.ssl.SSLHandshakeException;
 import java.io.*;
+import java.net.SocketException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Set;
@@ -40,11 +42,17 @@ public class PixivUtils {
         InputStream inputStream;
         try {
             inputStream = urlConnection.getInputStream();
-        }catch (FileNotFoundException fileNotFoundException){
-            log.error("文件不存在",fileNotFoundException);
+        } catch (SSLHandshakeException sslHandshakeException) {
+            log.error("SSLHandshakeException异常,message={}", sslHandshakeException.getMessage());
             return null;
-        }catch (IOException e) {
-            log.info("建立连接失败，请检查请求头是否有效，也有可能是作者销号了",e);
+        } catch (SocketException socketException) {
+            log.error("SocketException异常,message={}", socketException.getMessage());
+            return null;
+        } catch (FileNotFoundException fileNotFoundException) {
+            log.error("文件不存在", fileNotFoundException);
+            return null;
+        } catch (IOException e) {
+            log.info("建立连接失败，请检查请求头是否有效，也有可能是作者销号了", e);
             return null;
         }
         return inputStream;
@@ -77,7 +85,7 @@ public class PixivUtils {
                     }
                     inputStream = urlConnection.getInputStream();
                 } catch (IOException exception) {
-                    log.error("获取数据再次失败，此次大概率为网络问题",exception);
+                    log.error("获取数据再次失败，此次大概率为网络问题--{}",exception.getMessage());
                     return null;
                 }
             } else {
