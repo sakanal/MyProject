@@ -10,6 +10,7 @@ import com.sakanal.web.service.FailPictureService;
 import com.sakanal.web.service.PictureService;
 import com.sakanal.web.service.UserService;
 import com.sakanal.web.service.YandeService;
+import com.sakanal.web.util.MySSlUtils;
 import com.sakanal.web.util.PictureUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
@@ -25,9 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Pattern;
 
 import static com.sakanal.web.constant.SourceConstant.YANDE_SOURCE;
@@ -59,12 +58,16 @@ public class YandeServiceImpl implements YandeService {
         try {
             Document pageDocument;
             try {
+                MySSlUtils.ignoreSsl();
                 pageDocument = Jsoup.parse(new URL(tryGetTotalPageURL), 10 * 1000);
             } catch (SSLHandshakeException ssl) {
                 log.error("SSLHandshakeException异常,message={}",ssl.getMessage());
                 return;
             }catch (SocketTimeoutException socketTimeoutException){
                 log.error("SocketTimeoutException异常,message={}",socketTimeoutException.getMessage());
+                return;
+            } catch (Exception e) {
+                log.error("忽略SSL证书失败,message={}",e.getMessage());
                 return;
             }
             String tempDownloadDir = baseDownloadDir + "\\" + YANDE_SOURCE + "\\" + tags + "\\";
@@ -75,7 +78,20 @@ public class YandeServiceImpl implements YandeService {
                 List<FailPicture> failPictureList = new ArrayList<>();
                 for (int page = 1; page <= pages; page++) {
                     String pageURL = baseURL + "&page=" + page;
-                    Document document = Jsoup.parse(new URL(pageURL), 10 * 1000);
+                    Document document = null;
+                    try {
+                        document = Jsoup.parse(new URL(pageURL), 10 * 1000);
+                    } catch (SocketTimeoutException socketTimeoutException) {
+                        log.error("SocketTimeoutException异常,message={}",socketTimeoutException.getMessage());
+                        log.info("第二次尝试获取页面数据");
+                        try {
+                            document = Jsoup.parse(new URL(pageURL), 10 * 1000);
+                        } catch (IOException e) {
+                            log.error("SocketTimeoutException异常,message={}",socketTimeoutException.getMessage());
+                            log.info("第二次尝试获取页面数据-失败");
+                            continue;
+                        }
+                    }
                     List<Picture> pictures = initPictureList(document, tags);
                     if (pictures == null) {
                         continue;
@@ -99,7 +115,8 @@ public class YandeServiceImpl implements YandeService {
                     }
                 }
                 if (!failPictureList.isEmpty()) {
-                    failPictureService.saveBatch(failPictureList);
+                    boolean saveBatch = failPictureService.saveOrUpdateBatch(failPictureList);
+                    log.info("失败队列保存{}",saveBatch?"成功":"失败");
                 }
 
                 long end = System.currentTimeMillis();
@@ -120,6 +137,13 @@ public class YandeServiceImpl implements YandeService {
                 .and(query -> query.eq(Picture::getStatus, PictureStatusConstant.DEFAULT_STATUS)
                         .or().eq(Picture::getStatus, PictureStatusConstant.FAIL_STATUS)));
         if (pictureList != null && !pictureList.isEmpty()) {
+            try {
+                MySSlUtils.ignoreSsl();
+            } catch (Exception e) {
+                log.error("忽略SSL证书失败,message={}",e.getMessage());
+                return;
+            }
+            Set<Long> failPictureIdSet = new HashSet<>();
             log.info("当前有" + pictureList.size() + "图片需要进行补充下载");
             String tempDownloadDir;
             int i = 1;
@@ -129,17 +153,14 @@ public class YandeServiceImpl implements YandeService {
                 if (download(picture, tempDownloadDir)) {
                     log.info("第" + i + "张图片完成下载");
                     picture.setStatus(PictureStatusConstant.SUCCESS_STATUS);
+                    failPictureIdSet.add(picture.getId());
                 } else {
                     log.error("第" + i + "张图片下载失败");
                 }
                 i++;
             }
             pictureService.updateBatchById(pictureList);
-            failPictureService.saveOrUpdateBatch(pictureList);
-            failPictureService.remove(new LambdaQueryWrapper<FailPicture>()
-                    .eq(FailPicture::getType, YANDE_SOURCE)
-                    .and(query -> query.eq(FailPicture::getStatus, PictureStatusConstant.SUCCESS_STATUS)
-                            .or().eq(FailPicture::getStatus, PictureStatusConstant.COVER_STATUS)));
+            failPictureService.removeBatchByIds(failPictureIdSet);
         } else {
             log.info("暂无图片需要补充下载");
         }
@@ -206,7 +227,7 @@ public class YandeServiceImpl implements YandeService {
                         pictureService.updateById(picture);
                     }
                 });
-                failPictureService.saveBatch(failPictures);
+                failPictureService.saveOrUpdateBatch(failPictures);
             }
         }
 
@@ -312,7 +333,10 @@ public class YandeServiceImpl implements YandeService {
             }
             pictureService.updateById(picture);
             return true;
-        } catch (IOException e) {
+        }catch (SocketTimeoutException socketTimeoutException){
+            log.error("SocketTimeoutException,message={}",socketTimeoutException.getMessage());
+            return false;
+        }catch (IOException e) {
             log.info("获取图片详细页面失败，请检查代理是否有效");
             e.printStackTrace();
             return false;

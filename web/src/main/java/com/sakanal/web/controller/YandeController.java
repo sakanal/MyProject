@@ -49,7 +49,7 @@ public class YandeController {
     @TakeLock(lockName = "yandeLock")
     @RequestMapping("/upload")
     public String upload(){
-        yandeService.againDownload();
+        yandeService.update();
         return "完成更新";
     }
 }

@@ -14,6 +14,7 @@ import javax.annotation.Resource;
 import javax.net.ssl.SSLHandshakeException;
 import java.io.*;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Set;
@@ -47,6 +48,9 @@ public class PixivUtils {
             return null;
         } catch (SocketException socketException) {
             log.error("SocketException异常,message={}", socketException.getMessage());
+            return null;
+        } catch (SocketTimeoutException socketTimeoutException) {
+            log.error("SocketTimeoutException异常,message={}", socketTimeoutException.getMessage());
             return null;
         } catch (FileNotFoundException fileNotFoundException) {
             log.error("文件不存在", fileNotFoundException);

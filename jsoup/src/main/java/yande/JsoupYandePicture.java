@@ -1,8 +1,10 @@
 package yande;
 
+import cn.hutool.core.net.SSLUtil;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import utils.SslUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,6 +26,7 @@ public class JsoupYandePicture {
         System.setProperty("https.proxyHost", proxyHost);
         System.setProperty("https.proxyPort", proxyPort);
 
+        SslUtils.ignoreSsl();
         Document document = Jsoup.parse(new URL(simpleUrl + id), 10 * 1000);
         Element elementById = document.getElementById("png");
         if (elementById==null){
@@ -40,9 +43,9 @@ public class JsoupYandePicture {
         FileOutputStream outputStream = new FileOutputStream(dirName + fileName);
         int temp=0;
         System.out.println("开始下载");
-        while ((temp=inputStream.read())!=-1){
-            outputStream.write(temp);
-        }
+//        while ((temp=inputStream.read())!=-1){
+//            outputStream.write(temp);
+//        }
         System.out.println("完成");
         inputStream.close();
         outputStream.close();
