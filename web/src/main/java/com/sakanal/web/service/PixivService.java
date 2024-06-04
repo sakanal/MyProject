@@ -11,4 +11,6 @@ public interface PixivService {
     void updateByNow();
 
     boolean changeUserName(Long userId, String userName);
+
+    boolean saveUser(Long userId);
 }

@@ -333,6 +333,20 @@ public class PixivServiceImpl implements PixivService {
         }
     }
 
+    @Override
+    public boolean saveUser(Long userId) {
+        String userName = getUserName(userId);
+        boolean save = false;
+        if (StringUtils.hasText(userName)) {
+            User user = new User();
+            user.setUserId(userId);
+            user.setUserName(userName);
+            user.setType(SourceConstant.PIXIV_SOURCE);
+            save = userService.save(user);
+        }
+        return save;
+    }
+
     /**
      * 获取该画师的所有作品数据，对结果进行转换  解析数据，获取pictureId，设置userId/userName/PictureId/pageCount/type/status
      *

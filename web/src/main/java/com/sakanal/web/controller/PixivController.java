@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -47,5 +48,18 @@ public class PixivController {
     public String againDownload() {
         pixivService.againDownload();
         return "开始补充下载";
+    }
+
+    @TakeLock(lockName = "pixivLock")
+    @RequestMapping("/saveUser/{userId}")
+    public String saveUser(@PathVariable("userId")Long userId){
+        List<User> userList = userService.list(new LambdaQueryWrapper<User>().eq(User::getUserId, userId).last("LIMIT 1"));
+        String msg;
+        if (!userList.isEmpty()){
+            msg="该画师已记录";
+        }else {
+            msg = pixivService.saveUser(userId)?"保存成功":"保存失败";
+        }
+        return msg;
     }
 }

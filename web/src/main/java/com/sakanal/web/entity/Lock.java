@@ -34,6 +34,6 @@ public class Lock implements Serializable {
     private Long availableTime;
 
     public static Lock setLock(String lockName) {
-        return new Lock(lockName, LocalDateTimeUtil.now().plusHours(6).toInstant(ZoneOffset.of("+8")).toEpochMilli());
+        return new Lock(lockName, LocalDateTimeUtil.now().plusHours(24).toInstant(ZoneOffset.of("+8")).toEpochMilli());
     }
 }
