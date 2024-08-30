@@ -10,19 +10,22 @@ import java.net.URL;
 
 @Slf4j
 public class PictureUtils {
-    public static boolean downloadPicture(String downloadDir, Picture picture,InputStream inputStream ,String type){
+    public static boolean downloadPicture(String downloadDir, Picture picture,InputStream inputStream ,String type,boolean userFlag){
         switch (type){
             case SourceConstant.YANDE_SOURCE: {
                 return yande(downloadDir, picture);
             }
             case SourceConstant.PIXIV_SOURCE: {
-                return pixiv(downloadDir, picture,inputStream);
+                return pixiv(downloadDir, picture,inputStream,userFlag);
             }
             default:{
                 log.info("未知来源");
                 return false;
             }
         }
+    }
+    public static boolean downloadPicture(String downloadDir, Picture picture,InputStream inputStream ,String type){
+        return downloadPicture(downloadDir,picture,inputStream,type,false);
     }
 
     private static boolean yande(String downloadDir, Picture picture) {
@@ -61,7 +64,7 @@ public class PictureUtils {
         return file;
     }
 
-    private static boolean pixiv(String downloadDir, Picture picture, InputStream inputStream){
+    private static boolean pixiv(String downloadDir, Picture picture, InputStream inputStream,boolean userFlag){
         File file = createDir(downloadDir);
         if (file==null) return false;
         if (!StringUtils.hasText(picture.getSrc()))
@@ -70,7 +73,12 @@ public class PictureUtils {
         String[] split = src.split("\\.");
         String suffix = split[split.length - 1];
         String fileName = downloadDir + picture.getPictureId() + "_p" + picture.getPageCount()+ "_" + picture.getTitle()+"."+suffix;
-        String targetDir = downloadDir.replace(picture.getUserName() + "-" + picture.getUserId() + "\\", "temp\\");
+        String targetDir = "";
+        if (userFlag){
+            targetDir = downloadDir.replace(picture.getUserName() + "-" + picture.getUserId() + "\\", "user\\");
+        }else {
+            targetDir = downloadDir.replace(picture.getUserName() + "-" + picture.getUserId() + "\\", "temp\\");
+        }
         String targetFileName = targetDir + picture.getPictureId() + "_p" + picture.getPageCount() + "_" + picture.getTitle() + "." + suffix;
         FileOutputStream outputStream = null;
         try {
@@ -82,6 +90,12 @@ public class PictureUtils {
         return download(inputStream, outputStream, fileName, targetDir, targetFileName);
     }
 
+    /**
+     * 正式下载图片
+     * @param inputStream
+     * @param outputStream
+     * @return
+     */
     private static boolean download(InputStream inputStream, FileOutputStream outputStream) {
         try {
             int temp;
@@ -99,6 +113,15 @@ public class PictureUtils {
     }
 
 
+    /**
+     * 正式下载并复制图片
+     * @param inputStream
+     * @param outputStream
+     * @param fileName
+     * @param targetDir
+     * @param targetFileName
+     * @return
+     */
     private static boolean download(InputStream inputStream, FileOutputStream outputStream, String fileName, String targetDir, String targetFileName) {
         if (download(inputStream, outputStream)) {
             // 下载成功，进行图片复制

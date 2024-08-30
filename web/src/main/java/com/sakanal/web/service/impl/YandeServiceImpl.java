@@ -78,7 +78,7 @@ public class YandeServiceImpl implements YandeService {
                 List<FailPicture> failPictureList = new ArrayList<>();
                 for (int page = 1; page <= pages; page++) {
                     String pageURL = baseURL + "&page=" + page;
-                    Document document = null;
+                    Document document;
                     try {
                         document = Jsoup.parse(new URL(pageURL), 10 * 1000);
                     } catch (SocketTimeoutException socketTimeoutException) {
