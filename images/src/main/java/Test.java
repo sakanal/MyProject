@@ -8,6 +8,13 @@ import java.util.concurrent.TimeUnit;
 
 public class Test {
     public static void main(String[] args) throws IOException {
+        File file = new File("E:\\图片\\手机\\test");
+        System.out.println(file.getParent());
+        System.out.println(new File(file.getParent()).getName());
+
+    }
+
+    public static void aLikeImageTest() throws IOException {
 //        String folderName = "E:\\图片\\pixiv\\手动下载";
         System.out.println("输入图片目录");
         String folderName = new Scanner(System.in).next();
@@ -45,6 +52,8 @@ public class Test {
             System.out.println(checkImage);
         }
     }
+
+
     public static boolean checkImages(BufferedImage image1,BufferedImage image2) throws IOException{
         FingerPrint fingerPrint = new FingerPrint(image1);
         float compare = fingerPrint.compare(new FingerPrint(image2));

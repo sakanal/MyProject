@@ -15,6 +15,8 @@ public class AlikeImage {
         if (!folder.exists()){
             return;
         }
+        // 获取当前文件的上级目录，且指定相似文件存放的文件夹名称
+        String targetName = folder.getParent()+"\\similarImages";
         //获取目录下的每个图片文件
         File[] files = folder.listFiles();
         assert files != null;
@@ -23,8 +25,12 @@ public class AlikeImage {
         for (File file : files) {
             String fileName = folderName +"\\"+ file.getName();
             System.out.println("第"+(++count)+"张图片："+fileName);
-            //获取每张图片的指纹标识
-            imagesList.add(new Image(folderName,file.getName()));
+            if ("Thumbs.db".equalsIgnoreCase(file.getName())){
+                System.out.println("跳过缓存文件");
+            }else {
+                //获取每张图片的指纹标识
+                imagesList.add(new Image(folderName,file.getName()));
+            }
         }
         count = 0;
         ArrayList<SimilarImages> similarImagesList = new ArrayList<>();
@@ -37,9 +43,9 @@ public class AlikeImage {
                     Image two = imagesList.get(j);
                     if (two.fingerPrint!=null){
                         float compare = one.fingerPrint.compare(two.fingerPrint);
-                        System.out.println(one.imageName);
-                        System.out.println(two.imageName);
-                        System.out.println("相似度："+compare);
+//                        System.out.println(one.imageName);
+//                        System.out.println(two.imageName);
+//                        System.out.println("相似度："+compare);
                         if (compare>0.9){
                             similarImagesList.add(new SimilarImages(one,two));
                         }
@@ -55,16 +61,45 @@ public class AlikeImage {
         }
         long endTime = System.currentTimeMillis();
         System.out.println("程序运行了："+((endTime-startTime)/1000)+"秒");
+        if (similarImagesList.isEmpty()){
+            System.out.println("无相似图片");
+        }else {
+            File file = new File(targetName);
+            if (!file.exists()){
+                file.mkdirs();
+            }
+        }
         for (SimilarImages similarImages : similarImagesList) {
+            // 移动文件到指定文件夹方便处理
+            Image one = similarImages.one;
+            File oneFile = new File(one.dirName+"\\"+one.imageName);
+            if (oneFile.exists()){
+                // 文件移动
+                if (!oneFile.renameTo(new File(targetName+"\\"+one.imageName))){
+                    System.out.println(one.dirName+"\\"+one.imageName+"文件移动失败");
+                }
+            }
+            Image two = similarImages.two;
+            File twoFile = new File(two.dirName+"\\"+two.imageName);
+            if (twoFile.exists()){
+                // 文件移动
+                if (!twoFile.renameTo(new File(targetName+"\\"+two.imageName))){
+                    System.out.println(two.dirName+"\\"+two.imageName+"文件移动失败");
+                }
+            }
             System.out.println(similarImages);
         }
     }
 }
 //存储图片的基本消息以及图片的标识
 class Image{
+    // 文件名称
     String imageName;
+    // 文件绝对地址
     String dirName;
+    // 文件指纹
     FingerPrint fingerPrint;
+    // 文件大小
     long imageSize;
 
     public Image() {}
