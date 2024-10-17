@@ -1,7 +1,6 @@
 package com.sakanal.leipin.controller;
 
 import com.sakanal.leipin.service.LiePinService;
-import com.sakanal.leipin.utils.LiePinUtil;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
