@@ -62,4 +62,11 @@ public class PixivController {
         }
         return msg;
     }
+
+    @TakeLock(lockName = "pixivLock")
+    @RequestMapping("/resetState/{pictureId}")
+    public String resetState(@PathVariable("pictureId")Long pictureId){
+        pixivService.resetState(pictureId);
+        return "重置状态完成";
+    }
 }

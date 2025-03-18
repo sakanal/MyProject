@@ -38,4 +38,10 @@ public interface PixivService {
      * @return
      */
     boolean saveUser(Long userId);
+
+    /**
+     * 重置画作状态
+     * @param pictureId
+     */
+    void resetState(Long pictureId);
 }

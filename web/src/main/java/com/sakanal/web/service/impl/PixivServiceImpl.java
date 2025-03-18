@@ -4,6 +4,7 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.sakanal.web.constant.PictureStatusConstant;
 import com.sakanal.web.constant.SourceConstant;
 import com.sakanal.web.entity.FailPicture;
@@ -345,6 +346,14 @@ public class PixivServiceImpl implements PixivService {
             save = userService.save(user);
         }
         return save;
+    }
+
+    @Override
+    public void resetState(Long pictureId) {
+        pictureService.update(new LambdaUpdateWrapper<Picture>()
+                .eq(Picture::getPictureId, pictureId)
+                .eq(Picture::getType, SourceConstant.PIXIV_SOURCE)
+                .set(Picture::getStatus, PictureStatusConstant.FAIL_STATUS));
     }
 
     /**
