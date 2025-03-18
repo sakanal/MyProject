@@ -1,5 +1,6 @@
 package com.sakanal.web.util;
 
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.sakanal.web.config.MyPixivConfig;
 import com.sakanal.web.constant.PictureStatusConstant;
@@ -7,6 +8,7 @@ import com.sakanal.web.constant.SourceConstant;
 import com.sakanal.web.entity.Picture;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 
@@ -17,7 +19,11 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Data
@@ -29,6 +35,87 @@ public class PixivUtils {
     private MyPixivConfig myPixivConfig;
     @Resource
     private SeleniumUtils seleniumUtils;
+
+
+    /**
+     * 获取该画师的所有作品数据，对结果进行转换  解析数据，获取pictureId，设置userId/userName/PictureId/pageCount/type/status
+     *
+     * @param userId   当前用户id
+     * @param userName 当前用户姓名
+     * @return List<Picture> userId/userName/PictureId/pageCount/type/status
+     */
+    public List<Picture> initPictureList(Long userId, String userName) {
+        String allPictureAjaxURL = "https://www.pixiv.net/ajax/user/" + userId + "/profile/all";
+
+        InputStream inputStream = getInputStream(allPictureAjaxURL);
+        if (inputStream == null) {
+            return null;
+        }
+        String result = getUrlResult(inputStream);
+        if (!StringUtils.hasText(result)) {
+            log.info("获取所有作品数据失败，请检查网络情况");
+            return null;
+        }
+
+        Object body = JSONUtil.parseObj(result).get("body");
+        Object illusts = JSONUtil.parseObj(body).get("illusts");
+        Matcher matcher = Pattern.compile("[0-9]+").matcher(illusts.toString());
+        List<Picture> pictureList = new ArrayList<>();
+        while (matcher.find()) {
+            String pictureId = matcher.group();
+            Picture picture = new Picture();
+            picture.setUserId(userId);
+            picture.setUserName(userName);
+            picture.setPictureId(Long.valueOf(pictureId));
+            picture.setPageCount(1);
+            picture.setType(SourceConstant.PIXIV_SOURCE);
+            picture.setStatus(PictureStatusConstant.DEFAULT_STATUS);
+            pictureList.add(picture);
+        }
+        return pictureList;
+    }
+
+
+    /**
+     * 获取作者名称
+     *
+     * @param userId 作者id
+     * @return 作者名称
+     */
+    public String getUserName(Long userId) {
+        String ajaxURL = "https://www.pixiv.net/ajax/user/" + userId + "/profile/top";
+
+        InputStream inputStream = getInputStream(ajaxURL);
+        if (inputStream == null) {
+            return null;
+        }
+        String result = getUrlResult(inputStream);
+        if (!StringUtils.hasText(result)) {
+            log.info("获取作者名称失败，请检查网络情况");
+            return null;
+        }
+        Object body = JSONUtil.parseObj(result).get("body");
+        Object extraData = JSONUtil.parseObj(body).get("extraData");
+        Object meta = JSONUtil.parseObj(extraData).get("meta");
+        return JSONUtil.parseObj(meta).get("title").toString().replace(" - pixiv", "");
+
+    }
+
+
+    /**
+     * 获取图片组，替换url中的图片组编号
+     *
+     * @param i          当前图片的count值
+     * @param oldPicture 当前pictureId模板
+     * @return 最终图片数据，相同的pictureId，不同的pageCount以及src
+     */
+    public Picture getResultPicture(int i, Picture oldPicture) {
+        Picture picture = new Picture();
+        BeanUtils.copyProperties(oldPicture, picture);
+        picture.setSrc(oldPicture.getSrc().replace("_p0", "_p" + i));
+        picture.setPageCount((i + 1));
+        return picture;
+    }
 
     /**
      * 根据链接获取数据，通用
@@ -209,28 +296,33 @@ public class PixivUtils {
      * @return 如果是gif返回null，否则返回原图链接，不需要考虑后缀的问题
      */
     public boolean getPictureOriginalUrl(Picture picture) {
-        String url = "https://www.pixiv.net/ajax/illust/" + picture.getPictureId();
-        InputStream inputStream = getInputStream(url);
-        if (inputStream == null) {
-            log.error("通过链接获取数据失败");
-            return false;
+        InputStream inputStream = null;
+        try {
+            String url = "https://www.pixiv.net/ajax/illust/" + picture.getPictureId();
+            inputStream = getInputStream(url);
+            if (inputStream == null) {
+                log.error("通过链接获取数据失败");
+                return false;
+            }
+            String result = getUrlResult(inputStream);
+            if (!StringUtils.hasText(result)) {
+                log.error("数据解析失败");
+                return false;
+            }
+            // 将 body 解析结果存储在 bodyObj 中，避免重复解析
+            JSONObject bodyObj = JSONUtil.parseObj(JSONUtil.parseObj(result).get("body"));
+            picture.setTitle(bodyObj.getStr("title"));
+            // type==2应该是gif文件
+            if (bodyObj.getInt("illustType") != 2) {
+                picture.setSrc(JSONUtil.parseObj(bodyObj.get("urls")).getStr("original"));
+                closeConnection(null, inputStream, null);
+                return true;
+            }
+        } catch (Exception e) {
+            log.error("通过连接获取数据出现异常",e);
+        } finally {
+            closeConnection(null, inputStream, null);
         }
-        String result = getUrlResult(inputStream);
-        if (!StringUtils.hasText(result)) {
-            log.error("数据解析失败");
-            return false;
-        }
-        Object body = JSONUtil.parseObj(result).get("body");
-        String title = (String) JSONUtil.parseObj(body).get("title");
-        String originalURL = (String) JSONUtil.parseObj(JSONUtil.parseObj(body).get("urls")).get("original");
-        Integer type = (Integer) JSONUtil.parseObj(body).get("illustType");
-        picture.setTitle(title);
-        // type==2应该是gif文件
-        if (type != 2) {
-            picture.setSrc(originalURL);
-            return true;
-        }
-        closeConnection(null,inputStream,null);
         return false;
     }
 
@@ -240,38 +332,39 @@ public class PixivUtils {
      * @return 该图片的所有下载所需的信息
      */
     public Picture getPictureInfo(Long pictureId) {
-        //
-        //https://www.pixiv.net/ajax/illust/110090680?lang=zh&version=b461aaba721300d63f4506a979bf1c3e6c11df13 可以获取到所有的数据
-        String url = "https://www.pixiv.net/ajax/illust/" + pictureId;
+        InputStream inputStream = null;
+        Picture picture = null;
+        try {
+            //https://www.pixiv.net/ajax/illust/110090680?lang=zh&version=b461aaba721300d63f4506a979bf1c3e6c11df13 可以获取到所有的数据
+            String url = "https://www.pixiv.net/ajax/illust/" + pictureId;
 
-        InputStream inputStream = getInputStream(url);
-        if (inputStream==null){
-            log.error("通过链接获取数据失败");
-            return null;
-        }
-        String result = getUrlResult(inputStream);
-        if (!StringUtils.hasText(result)){
-            log.error("数据解析失败");
-            return null;
-        }
+            inputStream = getInputStream(url);
+            if (inputStream == null) {
+                log.error("通过链接获取图片数据失败");
+                return null;
+            }
+            String result = getUrlResult(inputStream);
+            if (!StringUtils.hasText(result)) {
+                log.error("数据解析失败");
+                return null;
+            }
 //        String result = HttpUtil.get(url);
-        Object body = JSONUtil.parseObj(result).get("body");
-        String userId = (String) JSONUtil.parseObj(body).get("userId");
-        String userName = (String) JSONUtil.parseObj(body).get("userName");
-        String title = (String) JSONUtil.parseObj(body).get("title");
-        Integer type = (Integer) JSONUtil.parseObj(body).get("illustType");
-        Integer pageCount = (Integer) JSONUtil.parseObj(body).get("pageCount");
-        String originalURL = (String) JSONUtil.parseObj(JSONUtil.parseObj(body).get("urls")).get("original");
-        Picture picture = new Picture();
-        picture.setPictureId(pictureId);
-        picture.setUserId(Long.valueOf(userId));
-        picture.setUserName(userName);
-        picture.setTitle(title);
-        picture.setPageCount(pageCount);
-        picture.setSrc(originalURL);
-        picture.setType(SourceConstant.PIXIV_SOURCE);
+            Object body = JSONUtil.parseObj(result).get("body");
+            JSONObject bodyObj = JSONUtil.parseObj(body);
 
-        closeConnection(null,inputStream,null);
+            picture = new Picture();
+            picture.setPictureId(pictureId);
+            picture.setUserId(bodyObj.getLong("userId"));
+            picture.setUserName(bodyObj.getStr("userName"));
+            picture.setTitle(bodyObj.getStr("title"));
+            picture.setPageCount(bodyObj.getInt("pageCount"));
+            picture.setSrc(JSONUtil.parseObj(bodyObj.get("urls")).getStr("original"));
+            picture.setType(SourceConstant.PIXIV_SOURCE);
+        } catch (Exception e) {
+            log.error("通过连接获取图片所需数据出现异常",e);
+        } finally {
+            closeConnection(null, inputStream, null);
+        }
         return picture;
     }
 

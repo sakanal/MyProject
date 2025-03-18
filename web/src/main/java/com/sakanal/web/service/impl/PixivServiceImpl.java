@@ -60,7 +60,7 @@ public class PixivServiceImpl implements PixivService {
 //    @Async("threadPoolExecutor")
     public void download(Long userId) {
         // 获取用户名
-        String userName = getUserName(userId);
+        String userName = pixivUtils.getUserName(userId);
         if (StringUtils.hasText(userName)) {
             long hasUser = userService.count(new LambdaQueryWrapper<User>().eq(User::getUserId, userId));
             if (hasUser == 0) {
@@ -79,7 +79,7 @@ public class PixivServiceImpl implements PixivService {
                 log.info("该作者已被标记，正在尝试更新数据");
             }
             // 根据用户ID和用户名进行图片列表初始化，会获取除url和title的所有数据，对于图片组数据未进行处理
-            List<Picture> pictureList = initPictureList(userId, userName);
+            List<Picture> pictureList = pixivUtils.initPictureList(userId, userName);
             if (pictureList != null && !pictureList.isEmpty()) {
                 // 获取正式使用的图片列表数据，并对图片组数据完成处理
                 pictureList = getResultPictureList(userId, pictureList);
@@ -122,7 +122,7 @@ public class PixivServiceImpl implements PixivService {
         List<User> userList = userService.list(new LambdaQueryWrapper<User>().eq(User::getType, SourceConstant.PIXIV_SOURCE));
         userList.forEach(user -> {
             // 针对每一个作者获取所有图片列表数据的基础数据，此时数据不存在url和title，并且未对图片组数据进行处理
-            List<Picture> pictureList = initPictureList(user.getUserId(), user.getUserName());
+            List<Picture> pictureList = pixivUtils.initPictureList(user.getUserId(), user.getUserName());
             if (pictureList != null && !pictureList.isEmpty()) {
                 LambdaQueryWrapper<Picture> lambdaQueryWrapper = new LambdaQueryWrapper<Picture>()
                         .eq(Picture::getType, SourceConstant.PIXIV_SOURCE)
@@ -271,7 +271,7 @@ public class PixivServiceImpl implements PixivService {
                 pictureList.add(picture);
             } else {
                 for (int i = 0; i < picture.getPageCount(); i++) {
-                    Picture resultPicture = getResultPicture(i, picture);
+                    Picture resultPicture = pixivUtils.getResultPicture(i, picture);
                     pictureList.add(resultPicture);
                 }
             }
@@ -336,7 +336,7 @@ public class PixivServiceImpl implements PixivService {
 
     @Override
     public boolean saveUser(Long userId) {
-        String userName = getUserName(userId);
+        String userName = pixivUtils.getUserName(userId);
         boolean save = false;
         if (StringUtils.hasText(userName)) {
             User user = new User();
@@ -356,68 +356,6 @@ public class PixivServiceImpl implements PixivService {
                 .set(Picture::getStatus, PictureStatusConstant.FAIL_STATUS));
     }
 
-    /**
-     * 获取该画师的所有作品数据，对结果进行转换  解析数据，获取pictureId，设置userId/userName/PictureId/pageCount/type/status
-     *
-     * @param userId   当前用户id
-     * @param userName 当前用户姓名
-     * @return List<Picture> userId/userName/PictureId/pageCount/type/status
-     */
-    private List<Picture> initPictureList(Long userId, String userName) {
-        String allPictureAjaxURL = "https://www.pixiv.net/ajax/user/" + userId + "/profile/all";
-
-        InputStream inputStream = pixivUtils.getInputStream(allPictureAjaxURL);
-        if (inputStream == null) {
-            return null;
-        }
-        String result = pixivUtils.getUrlResult(inputStream);
-        if (!StringUtils.hasText(result)) {
-            log.info("获取所有作品数据失败，请检查网络情况");
-            return null;
-        }
-
-        Object body = JSONUtil.parseObj(result).get("body");
-        Object illusts = JSONUtil.parseObj(body).get("illusts");
-        Matcher matcher = Pattern.compile("[0-9]+").matcher(illusts.toString());
-        List<Picture> pictureList = new ArrayList<>();
-        while (matcher.find()) {
-            String pictureId = matcher.group();
-            Picture picture = new Picture();
-            picture.setUserId(userId);
-            picture.setUserName(userName);
-            picture.setPictureId(Long.valueOf(pictureId));
-            picture.setPageCount(1);
-            picture.setType(SourceConstant.PIXIV_SOURCE);
-            picture.setStatus(PictureStatusConstant.DEFAULT_STATUS);
-            pictureList.add(picture);
-        }
-        return pictureList;
-    }
-
-    /**
-     * 获取作者名称
-     *
-     * @param userId 作者id
-     * @return 作者名称
-     */
-    private String getUserName(Long userId) {
-        String ajaxURL = "https://www.pixiv.net/ajax/user/" + userId + "/profile/top";
-
-        InputStream inputStream = pixivUtils.getInputStream(ajaxURL);
-        if (inputStream == null) {
-            return null;
-        }
-        String result = pixivUtils.getUrlResult(inputStream);
-        if (!StringUtils.hasText(result)) {
-            log.info("获取作者名称失败，请检查网络情况");
-            return null;
-        }
-        Object body = JSONUtil.parseObj(result).get("body");
-        Object extraData = JSONUtil.parseObj(body).get("extraData");
-        Object meta = JSONUtil.parseObj(extraData).get("meta");
-        return JSONUtil.parseObj(meta).get("title").toString().replace(" - pixiv", "");
-
-    }
 
     /**
      * 如果list中的数据超过80个则进行分割，并调用方法获取下载所需最终的图片列表信息
@@ -469,9 +407,10 @@ public class PixivServiceImpl implements PixivService {
             builder.append("ids[]=").append(picture.getPictureId()).append("&");
         }
         builder.append("work_category=illustManga&is_first_page=1&lang=zh");
-
+        // 调用url获取页面数据
         InputStream inputStream = pixivUtils.getInputStream(builder.toString());
         if (inputStream == null) return true;
+        // 解析页面数据并转成字符串用于后续获取实际有效数据
         String pictureResult = pixivUtils.getUrlResult(inputStream);
         if (!StringUtils.hasText(pictureResult)) return true;
 
@@ -493,35 +432,23 @@ public class PixivServiceImpl implements PixivService {
             Integer pageCount = (Integer) tempJsonObject.get("pageCount");
             String src = pixivUtils.getRealSrc((String) tempJsonObject.get("url"));
             oldPicture.setSrc(src);
+            // 获取该picture组中的所有相关连接
             for (int i = 0; i < pageCount; i++) {
-                Picture picture = getResultPicture(i, oldPicture);
+                Picture picture = pixivUtils.getResultPicture(i, oldPicture);
                 resultPictureList.add(picture);
             }
         }
         return false;
     }
 
-    /**
-     * 获取图片组
-     *
-     * @param i          当前图片的count值
-     * @param oldPicture 当前pictureId模板
-     * @return 最终图片数据，相同的pictureId，不同的pageCount以及src
-     */
-    private Picture getResultPicture(int i, Picture oldPicture) {
-        Picture picture = new Picture();
-        BeanUtils.copyProperties(oldPicture, picture);
-        picture.setSrc(oldPicture.getSrc().replace("_p0", "_p" + i));
-        picture.setPageCount((i + 1));
-        return picture;
-    }
 
     /**
      * 正式下载图片 会对下载时间进行统计 更新数据库中的图片下载状态，并将下载失败的图片另存数据库
      *
      * @param pictureList 图片列表 userId/userName/PictureId/pageCount/type/status
+     * @param userFlag  是否需要隔离用户下载
      */
-    private void downloadPicture(List<Picture> pictureList, boolean changeFlag) {
+    private void downloadPicture(List<Picture> pictureList, boolean userFlag) {
         if (!pictureList.isEmpty()) {
             log.info("开始下载");
             long start = System.currentTimeMillis();
@@ -531,7 +458,7 @@ public class PixivServiceImpl implements PixivService {
                 InputStream inputStream = pixivUtils.getInputStream(picture);
                 if (inputStream != null) {
                     String downloadDir = baseDownloadDir + "\\" + SourceConstant.PIXIV_SOURCE + "\\" + picture.getUserName() + "-" + picture.getUserId() + "\\";
-                    boolean downloadResult = PictureUtils.downloadPicture(downloadDir, picture, inputStream, SourceConstant.PIXIV_SOURCE, changeFlag);
+                    boolean downloadResult = PictureUtils.downloadPicture(downloadDir, picture, inputStream, SourceConstant.PIXIV_SOURCE, userFlag);
                     if (downloadResult) {
                         System.out.println(picture);
                         System.out.println(picture.getUserName() + "的第" + (i.incrementAndGet()) + "张图片下载完成，剩余" + (size - i.get()) + "张图片等待下载");
@@ -555,6 +482,10 @@ public class PixivServiceImpl implements PixivService {
 
     }
 
+    /**
+     * 正式下载图片 会对下载时间进行统计 更新数据库中的图片下载状态，并将下载失败的图片另存数据库，默认不会隔离用户下载
+     * @param pictureList 图片列表 userId/userName/PictureId/pageCount/type/status
+     */
     private void downloadPicture(List<Picture> pictureList) {
         downloadPicture(pictureList, false);
     }
