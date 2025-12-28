@@ -74,7 +74,7 @@ public class PictureUtils {
         String src = picture.getSrc();
         String suffix = getSuffix(src);
         String fileName = downloadDir + picture.getPictureId() + "_p" + picture.getPageCount() + "_" + picture.getTitle() + "." + suffix;
-        String targetDir = "";
+        String targetDir;
         if (userFlag) {
             targetDir = downloadDir.replace(picture.getUserName() + "-" + picture.getUserId() + "\\", "user\\");
         } else {
@@ -143,26 +143,39 @@ public class PictureUtils {
                 // 下载的文件存在，所以认为下载成功，此时只是因为进行扩展功能时失败
                 return true;
             }
-            try (FileInputStream fis = new FileInputStream(originFile);
-                 FileOutputStream fos = new FileOutputStream(targetFileName)) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = fis.read(buffer)) != -1) {
-                    fos.write(buffer, 0, bytesRead);
-                }
-                return true;
-            } catch (FileNotFoundException e) {
-                log.error("文件读取失败, errorMessage=[{}]", e.getMessage(), e);
-                // 下载的文件存在，所以认为下载成功，此时只是因为进行扩展功能时失败
-                return true;
-            } catch (IOException e) {
-                log.error("文件复制失败--{}, errorMessage=[{}]", fileName, e.getMessage(), e);
-                // 下载的文件存在，所以认为下载成功，此时只是因为进行扩展功能时失败
-                return true;
-            }
+            // 使用提取的copyFile方法
+            copyFile(fileName, targetFileName);
+            // 无论复制是否成功，只要下载成功就返回true
+            return true;
         } else {
             // 下载失败
             return false;
+        }
+    }
+
+    /**
+     * 复制文件
+     *
+     * @param sourceFile 源文件路径
+     * @param targetFile 目标文件路径
+     */
+    private static void copyFile(String sourceFile, String targetFile) {
+        File originFile = new File(sourceFile);
+        if (!originFile.exists()) {
+            log.error("源文件不存在: {}", sourceFile);
+        }
+
+        try (FileInputStream fis = new FileInputStream(originFile);
+             FileOutputStream fos = new FileOutputStream(targetFile)) {
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                fos.write(buffer, 0, bytesRead);
+            }
+        } catch (FileNotFoundException e) {
+            log.error("文件读取失败, errorMessage=[{}]", e.getMessage(), e);
+        } catch (IOException e) {
+            log.error("文件复制失败--{}, errorMessage=[{}]", sourceFile, e.getMessage(), e);
         }
     }
 

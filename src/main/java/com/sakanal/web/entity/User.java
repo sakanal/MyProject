@@ -43,6 +43,12 @@ public class User implements Serializable {
     @TableLogic
     private int isDeleted;
 
+    public User(Long userId, String userName, String type) {
+        this.userId = userId;
+        this.userName = userName;
+        this.type = type;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

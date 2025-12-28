@@ -28,6 +28,7 @@ import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.sakanal.web.constant.SourceConstant.YANDE_SOURCE;
 import static com.sakanal.web.constant.SourceConstant.YANDE_URL;
@@ -52,78 +53,57 @@ public class YandeServiceImpl implements YandeService {
      */
     @Override
     public void download(String tags) {
-        StringBuilder builder = new StringBuilder(YANDE_URL);
-        String tryGetTotalPageURL = builder.append("post").append("?tags=").append(tags).toString();
-        String baseURL = builder.toString();
-        try {
-            Document pageDocument;
-            try {
-                MySSlUtils.ignoreSsl();
-                pageDocument = Jsoup.parse(new URL(tryGetTotalPageURL), 10 * 1000);
-            } catch (SSLHandshakeException ssl) {
-                log.error("SSLHandshakeException异常,message={}",ssl.getMessage());
-                return;
-            }catch (SocketTimeoutException socketTimeoutException){
-                log.error("SocketTimeoutException异常,message={}",socketTimeoutException.getMessage());
-                return;
-            } catch (Exception e) {
-                log.error("忽略SSL证书失败,message={}",e.getMessage());
-                return;
-            }
-            String tempDownloadDir = baseDownloadDir + "\\" + YANDE_SOURCE + "\\" + tags + "\\";
-            int pages = getPages(pageDocument, tags, tempDownloadDir);
-            if (pages != 0) {
-                long start = System.currentTimeMillis();
+        String baseURL = YANDE_URL + "post?tags=" + tags;
+        // 初始化SSL设置
+        if (!initSSL()) {
+            return;
+        }
 
-                List<FailPicture> failPictureList = new ArrayList<>();
-                for (int page = 1; page <= pages; page++) {
-                    String pageURL = baseURL + "&page=" + page;
-                    Document document;
-                    try {
-                        document = Jsoup.parse(new URL(pageURL), 10 * 1000);
-                    } catch (SocketTimeoutException socketTimeoutException) {
-                        log.error("SocketTimeoutException异常,message={}",socketTimeoutException.getMessage());
-                        log.info("第二次尝试获取页面数据");
-                        try {
-                            document = Jsoup.parse(new URL(pageURL), 10 * 1000);
-                        } catch (IOException e) {
-                            log.error("SocketTimeoutException异常,message={}",socketTimeoutException.getMessage());
-                            log.info("第二次尝试获取页面数据-失败");
-                            continue;
-                        }
-                    }
-                    List<Picture> pictures = initPictureList(document, tags);
-                    if (pictures == null) {
-                        continue;
-                    }
-                    for (int i = 0; i < pictures.size(); i++) {
-                        log.info("第" + page + "页，第" + (i + 1) + "张图片开始下载");
-                        boolean download = download(pictures.get(i), tempDownloadDir);
-                        if (download) {
-                            log.info("第" + page + "页，第" + (i + 1) + "张图片完成");
-                            pictures.get(i).setStatus(PictureStatusConstant.SUCCESS_STATUS);
-                            //更新数据库中的图片状态
-                            pictureService.updateById(pictures.get(i));
-                        } else {
-                            log.info("存入失败队列，等待后续下载");
-                            pictures.get(i).setStatus(PictureStatusConstant.FAIL_STATUS);
-                            //更新数据库中的图片状态
-                            pictureService.updateById(pictures.get(i));
-                            FailPicture failPicture = new FailPicture(pictures.get(i));
-                            failPictureList.add(failPicture);
-                        }
+        Document pageDocument = getDocument(baseURL, "获取总页数");
+        if (pageDocument == null) {
+            return;
+        }
+        String tempDownloadDir = baseDownloadDir + "\\" + YANDE_SOURCE + "\\" + tags + "\\";
+        int pages = getPages(pageDocument, tags, tempDownloadDir);
+        if (pages != 0) {
+            long start = System.currentTimeMillis();
+
+            List<FailPicture> failPictureList = new ArrayList<>();
+            for (int page = 1; page <= pages; page++) {
+                String pageURL = baseURL + "&page=" + page;
+                Document document = getDocumentWithRetry(pageURL, "获取页面数据");
+                if (document == null) {
+                    continue;
+                }
+                List<Picture> pictures = initPictureList(document, tags);
+                if (pictures == null) {
+                    continue;
+                }
+                for (int i = 0; i < pictures.size(); i++) {
+                    log.info("第" + page + "页，第" + (i + 1) + "张图片开始下载");
+                    boolean download = download(pictures.get(i), tempDownloadDir);
+                    if (download) {
+                        log.info("第" + page + "页，第" + (i + 1) + "张图片完成");
+                        pictures.get(i).setStatus(PictureStatusConstant.SUCCESS_STATUS);
+                        //更新数据库中的图片状态
+                        pictureService.updateById(pictures.get(i));
+                    } else {
+                        log.info("存入失败队列，等待后续下载");
+                        pictures.get(i).setStatus(PictureStatusConstant.FAIL_STATUS);
+                        //更新数据库中的图片状态
+                        pictureService.updateById(pictures.get(i));
+                        FailPicture failPicture = new FailPicture(pictures.get(i));
+                        failPictureList.add(failPicture);
                     }
                 }
-                if (!failPictureList.isEmpty()) {
-                    boolean saveBatch = failPictureService.saveOrUpdateBatch(failPictureList);
-                    log.info("失败队列保存{}",saveBatch?"成功":"失败");
-                }
-
-                long end = System.currentTimeMillis();
-                log.info("耗时：" + (end - start) / 1000 + "秒");
             }
-        } catch (IOException e) {
-            log.error("建立连接失败，尝试获取总页数失败，请检查是否开启代理", e);
+            if (!failPictureList.isEmpty()) {
+                boolean saveBatch = failPictureService.saveOrUpdateBatch(failPictureList);
+                log.info("失败队列保存{}", saveBatch ? "成功" : "失败");
+            }
+
+            long end = System.currentTimeMillis();
+            log.info("耗时：" + (end - start) / 1000 + "秒");
         }
 
     }
@@ -136,10 +116,7 @@ public class YandeServiceImpl implements YandeService {
                 .and(query -> query.eq(Picture::getStatus, PictureStatusConstant.DEFAULT_STATUS)
                         .or().eq(Picture::getStatus, PictureStatusConstant.FAIL_STATUS)));
         if (pictureList != null && !pictureList.isEmpty()) {
-            try {
-                MySSlUtils.ignoreSsl();
-            } catch (Exception e) {
-                log.error("忽略SSL证书失败,message={}",e.getMessage());
+            if (!initSSL()) {
                 return;
             }
             Set<Long> failPictureIdSet = new HashSet<>();
@@ -193,13 +170,7 @@ public class YandeServiceImpl implements YandeService {
                 log.info("创建文件夹失败，请检查路径是否正确");
                 total = 0;
             } else {
-                List<User> list = userService.list(new LambdaQueryWrapper<User>().eq(User::getUserName, tags).eq(User::getType, YANDE_SOURCE).last("limit 1"));
-                if (list.isEmpty()) {
-                    User user = new User();
-                    user.setUserName(tags);
-                    user.setType(YANDE_SOURCE);
-                    userService.save(user);
-                }
+                createUserIfNotExists(tags);
             }
         } else {
             //文件夹存在，过去曾经下载过该tags
@@ -244,7 +215,14 @@ public class YandeServiceImpl implements YandeService {
     private List<Picture> initPictureList(Document document, String tags) {
         Elements li = Objects.requireNonNull(document.getElementById("post-list-posts")).getElementsByTag("li");
         log.info("当前页面有" + li.size() + "张图片");
-        User user = userService.getOne(new LambdaQueryWrapper<User>().eq(User::getUserName, tags).eq(User::getType, YANDE_SOURCE));
+        User user = userService.getOne(new LambdaQueryWrapper<User>()
+                .eq(User::getUserName, tags)
+                .eq(User::getType, YANDE_SOURCE)
+                .last("limit 1"));
+        if (user == null) {
+            log.error("未找到用户: {}", tags);
+            return null;
+        }
         Long id = user.getId();
         List<Picture> pictureList = new ArrayList<>();
         for (Element element : li) {
@@ -264,11 +242,24 @@ public class YandeServiceImpl implements YandeService {
             pictureList.add(picture);
         }
 
-        List<Picture> dataSourcePictureList = pictureService.list(new LambdaQueryWrapper<Picture>().eq(Picture::getUserName, tags).eq(Picture::getType, YANDE_SOURCE));
-        pictureList.removeAll(dataSourcePictureList);
+        if (pictureList.isEmpty()) {
+            log.info("该页没有图片数据");
+            return null;
+        }
+
+        List<Picture> dataSourcePictureList = pictureService.list(new LambdaQueryWrapper<Picture>()
+                .eq(Picture::getUserName, tags)
+                .eq(Picture::getType, YANDE_SOURCE)
+                .in(Picture::getPictureId, pictureList.stream().map(Picture::getPictureId).collect(Collectors.toList())));
+
+        if (!dataSourcePictureList.isEmpty()) {
+            Set<Long> existingIds = dataSourcePictureList.stream().map(Picture::getPictureId).collect(Collectors.toSet());
+            pictureList.removeIf(pic -> existingIds.contains(pic.getPictureId()));
+        }
+
         if (!pictureList.isEmpty()) {
             boolean saveBatch = pictureService.saveBatch(pictureList);
-            log.info("图片数据持久化:" + (saveBatch ? "成功" : "失败"));
+            log.info("图片数据持久化:{}", (saveBatch ? "成功" : "失败"));
         } else {
             log.info("该页数据过去已经下载完成");
             return null;
@@ -314,30 +305,85 @@ public class YandeServiceImpl implements YandeService {
      * @param picture 图片数据，要有src，src需要为图片页面目录 eg:https://yande.re//post/show/1026154
      */
     private boolean getPictureInfo(Picture picture) {
-        try {
-            Document documentImage = Jsoup.parse(new URL(picture.getSrc()), 10 * 1000);
-            Element elementById = documentImage.getElementById("png");
+        Document documentImage = getDocument(picture.getSrc(), "获取图片详细信息");
+        if (documentImage == null) {
+            return false;
+        }
+
+        Element elementById = documentImage.getElementById("png");
+        if (elementById != null) {
+            String href = elementById.attr("href");
+            picture.setSrc(href);
+        } else {
+            elementById = documentImage.getElementById("highres");
             if (elementById != null) {
                 String href = elementById.attr("href");
                 picture.setSrc(href);
             } else {
-                elementById = documentImage.getElementById("highres");
-                if (elementById != null) {
-                    String href = elementById.attr("href");
-                    picture.setSrc(href);
-                } else {
-                    log.error("检查网站是否更新");
-                    return false;
-                }
+                log.error("检查网站是否更新，未找到图片下载链接");
+                return false;
             }
-            pictureService.updateById(picture);
+        }
+
+        pictureService.updateById(picture);
+        return true;
+    }
+
+    /**
+     * 初始化SSL设置
+     */
+    private boolean initSSL() {
+        try {
+            MySSlUtils.ignoreSsl();
             return true;
-        }catch (SocketTimeoutException socketTimeoutException){
-            log.error("SocketTimeoutException,message={}",socketTimeoutException.getMessage());
+        } catch (Exception e) {
+            log.error("忽略SSL证书失败, message={}", e.getMessage());
             return false;
-        }catch (IOException e) {
-            log.error("获取图片详细页面失败，请检查代理是否有效", e);
-            return false;
+        }
+    }
+
+    /**
+     * 获取页面文档
+     */
+    private Document getDocument(String url, String operationDesc) {
+        try {
+            return Jsoup.parse(new URL(url), 10 * 1000);
+        } catch (SSLHandshakeException ssl) {
+            log.error("{}时发生SSLHandshakeException, message={}", operationDesc, ssl.getMessage());
+        } catch (SocketTimeoutException socketTimeoutException) {
+            log.error("{}时发生SocketTimeoutException, message={}", operationDesc, socketTimeoutException.getMessage());
+        } catch (IOException e) {
+            log.error("{}时发生IOException, message={}", operationDesc, e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * 带重试机制的页面文档获取
+     */
+    private Document getDocumentWithRetry(String url, String operationDesc) {
+        Document document = getDocument(url, operationDesc);
+        if (document == null) {
+            log.info("第二次尝试{}", operationDesc);
+            document = getDocument(url, operationDesc + "(重试)");
+        }
+        return document;
+    }
+
+    /**
+     * 如果用户不存在则创建
+     */
+    private void createUserIfNotExists(String userName) {
+        List<User> list = userService.list(new LambdaQueryWrapper<User>()
+                .eq(User::getUserName, userName)
+                .eq(User::getType, YANDE_SOURCE)
+                .last("limit 1"));
+        if (list.isEmpty()) {
+            User user = new User();
+            user.setUserName(userName);
+            user.setType(YANDE_SOURCE);
+            userService.save(user);
+            log.info("创建用户{}成功", userName);
         }
     }
 }

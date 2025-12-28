@@ -32,7 +32,7 @@ public class PixivController {
         } else {
             msg = "开始下载";
         }
-        pixivService.download(userId);
+        pixivService.downloadByUserId(userId);
         return msg;
     }
 
