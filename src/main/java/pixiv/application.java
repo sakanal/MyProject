@@ -6,6 +6,8 @@ import pixiv.URLConnection.PixivUser;
 import pixiv.URLConnection.UpdateUser;
 
 import java.io.FileNotFoundException;
+import java.net.URL;
+import java.net.URLConnection;
 
 public class application {
     private static final String proxyHost = "127.0.0.1";
@@ -27,22 +29,40 @@ public class application {
     //画师id组
     private static final Integer[] userIdArray={10495320,22124330,31147264,792198};
     //下载地址
-    private static final String simpleDownloadDirName="E:\\图片\\pixiv\\";
+    private static final String simpleDownloadDirName="\\192.168.2.7\\e\\temp";
 
-    public static void main(String[] args) throws Exception {
+    public static void main1(String[] args) throws Exception {
         long start = System.currentTimeMillis();
 
 //        update();
-
 //        downloadByUser(userId);
 //        downloadByUser(userIdArray);
-        downloadByPictureId(userId,pictureId);
+//        downloadByPictureId(userId,pictureId);
 //        downloadByFollowing();
 
-
+        testProxy();
 
         long end = System.currentTimeMillis();
         System.out.println("总共耗时"+((end-start)/1000)+"秒");
+    }
+
+    public static void testProxy() {
+        try {
+            // 测试访问一个能显示IP的网站，验证代理是否生效
+            URL url = new URL("https://httpbin.org/ip");
+            URLConnection conn = url.openConnection();
+            // 读取响应，查看返回的IP是否是代理服务器的IP
+            try (java.io.BufferedReader br = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(conn.getInputStream()))) {
+                String line;
+                System.out.println("=== 请求响应（验证代理IP）===");
+                while ((line = br.readLine()) != null) {
+                    System.out.println(line);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("请求失败：" + e.getMessage());
+        }
     }
 
     public static void update() throws Exception {
