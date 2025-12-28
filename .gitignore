@@ -1,2 +1,5 @@
 /.idea/
 /**/target/
+/config/
+/.vscode/
+/web.iml

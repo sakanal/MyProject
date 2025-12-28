@@ -123,8 +123,7 @@ public class YandeServiceImpl implements YandeService {
                 log.info("耗时：" + (end - start) / 1000 + "秒");
             }
         } catch (IOException e) {
-            log.info("建立连接失败，尝试获取总页数失败，请检查是否开启代理");
-            e.printStackTrace();
+            log.error("建立连接失败，尝试获取总页数失败，请检查是否开启代理", e);
         }
 
     }
@@ -337,8 +336,7 @@ public class YandeServiceImpl implements YandeService {
             log.error("SocketTimeoutException,message={}",socketTimeoutException.getMessage());
             return false;
         }catch (IOException e) {
-            log.info("获取图片详细页面失败，请检查代理是否有效");
-            e.printStackTrace();
+            log.error("获取图片详细页面失败，请检查代理是否有效", e);
             return false;
         }
     }

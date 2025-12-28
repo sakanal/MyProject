@@ -17,6 +17,4 @@ public class MyPixivConfig {
     private String username;
     private String password;
 
-
-
 }

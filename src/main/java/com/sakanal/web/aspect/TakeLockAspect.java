@@ -22,20 +22,20 @@ public class TakeLockAspect {
         if (!lockService.checkLock(takeLock.lockName())) {
             try {
                 if (lockService.setLock(takeLock.lockName())) {
-                    log.info(takeLock.lockName() + "上锁成功");
+                    log.info("{}上锁成功", takeLock.lockName());
                     long start = System.currentTimeMillis();
                     Object proceed = joinPoint.proceed();
                     long end = System.currentTimeMillis();
-                    log.info("耗时" + ((end - start) / 1000) + "秒");
+                    log.info("耗时{}秒", (end - start) / 1000);
                     return proceed;
                 } else {
-                    log.info(takeLock.lockName() + "上锁失败");
+                    log.info("{}上锁失败", takeLock.lockName());
                 }
             } finally {
                 if (lockService.unsetLock(takeLock.lockName())) {
-                    log.info(takeLock.lockName() + "解锁成功");
+                    log.info("{}解锁成功", takeLock.lockName());
                 } else {
-                    log.info(takeLock.lockName() + "解锁失败");
+                    log.info("{}解锁失败", takeLock.lockName());
                 }
             }
         } else {

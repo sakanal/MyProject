@@ -32,6 +32,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+/**
+ * PixivService接口实现类，负责处理Pixiv相关的业务逻辑
+ * <p>
+ * 主要功能包括：
+ * 1. 根据用户ID下载画师作品
+ * 2. 批量更新画师作品
+ * 3. 重试下载失败的作品
+ * 4. 更新最新作品
+ * 5. 更改画师名称
+ * 6. 重置作品下载状态
+ * </p>
+ * 
+ * @author sakanal
+ */
 @Slf4j
 @Service
 public class PixivServiceImpl implements PixivService {
@@ -50,27 +64,34 @@ public class PixivServiceImpl implements PixivService {
     private ThreadPoolExecutor executor;
 
     /**
-     * 根据userId下载该画师的所有画作，保存画师数据到数据库中(user)，会对画作数据进行初始化到数据库(picture)中，图片状态为默认状态
-     * 如果数据库中
-     *
-     * @param userId 用户id
+     * 根据userId下载该画师的所有画作
+     * <p>
+     * 功能流程：
+     * 1. 验证并保存画师信息到数据库(user表)
+     * 2. 初始化画作列表数据
+     * 3. 处理图片组数据
+     * 4. 剔除已完成下载的画作
+     * 5. 保存新增画作到数据库并下载
+     * </p>
+     * 
+     * @param userId 画师的Pixiv用户ID
      */
     @Override
 //    @Async("threadPoolExecutor")
     public void download(Long userId) {
         // 获取用户名
-        String userName = pixivUtils.getUserName(userId);
-        if (StringUtils.hasText(userName)) {
-            long hasUser = userService.count(new LambdaQueryWrapper<User>().eq(User::getUserId, userId));
-            if (hasUser == 0) {
+        String artistName = pixivUtils.getUserName(userId);
+        if (StringUtils.hasText(artistName)) {
+            long existingArtistCount = userService.count(new LambdaQueryWrapper<User>().eq(User::getUserId, userId));
+            if (existingArtistCount == 0) {
                 // 如果数据库中没有该用户的数据则进行新增数据
-                User user = new User();
-                user.setUserId(userId);
-                user.setUserName(userName);
-                user.setType(SourceConstant.PIXIV_SOURCE);
-                boolean save = userService.save(user);
-                log.info("画师数据持久化：" + (save ? "成功" : "失败"));
-                if (!save) {
+                User artist = new User();
+                artist.setUserId(userId);
+                artist.setUserName(artistName);
+                artist.setType(SourceConstant.PIXIV_SOURCE);
+                boolean isSaved = userService.save(artist);
+                log.info("画师数据持久化：" + (isSaved ? "成功" : "失败"));
+                if (!isSaved) {
                     log.error("请重新再试，参数为：{}", userId);
                     return;
                 }
@@ -78,26 +99,26 @@ public class PixivServiceImpl implements PixivService {
                 log.info("该作者已被标记，正在尝试更新数据");
             }
             // 根据用户ID和用户名进行图片列表初始化，会获取除url和title的所有数据，对于图片组数据未进行处理
-            List<Picture> pictureList = pixivUtils.initPictureList(userId, userName);
-            if (pictureList != null && !pictureList.isEmpty()) {
+            List<Picture> initialPictureList = pixivUtils.initPictureList(userId, artistName);
+            if (initialPictureList != null && !initialPictureList.isEmpty()) {
                 // 获取正式使用的图片列表数据，并对图片组数据完成处理
-                pictureList = getResultPictureList(userId, pictureList);
-                if (pictureList != null && !pictureList.isEmpty()) {
-                    List<Picture> list = pictureService.list(new LambdaQueryWrapper<Picture>()
+                List<Picture> processedPictureList = getResultPictureList(userId, initialPictureList);
+                if (processedPictureList != null && !processedPictureList.isEmpty()) {
+                    List<Picture> existingPictureList = pictureService.list(new LambdaQueryWrapper<Picture>()
                             .eq(Picture::getType, SourceConstant.PIXIV_SOURCE)
                             .eq(Picture::getUserId, userId));
                     // 剔除已完成下载的图片数据
-                    pictureList.removeAll(list);
-                    log.info("画师：" + userName + "\tid：" + userId + "\t" + pictureList.size() + "张新画作");
-                    if (!pictureList.isEmpty()) {
+                    processedPictureList.removeAll(existingPictureList);
+                    log.info("画师：" + artistName + "\tid：" + userId + "\t" + processedPictureList.size() + "张新画作");
+                    if (!processedPictureList.isEmpty()) {
                         // 存在未在数据库中进行数据保存（未下载）的图片数据则进行数据保存并下载
-                        boolean saveBatch = pictureService.saveBatch(pictureList);
-                        log.info("画作数据持久化：" + (saveBatch ? "成功" : "失败"));
-                        if (!saveBatch) {
+                        boolean isBatchSaved = pictureService.saveBatch(processedPictureList);
+                        log.info("画作数据持久化：" + (isBatchSaved ? "成功" : "失败"));
+                        if (!isBatchSaved) {
                             log.error("请重新再试，参数为：{}", userId);
                             return;
                         }
-                        downloadPicture(pictureList, true);
+                        downloadPicture(processedPictureList, true);
                     } else {
                         log.info("暂无画作数据更新");
                     }
@@ -111,39 +132,49 @@ public class PixivServiceImpl implements PixivService {
     }
 
     /**
-     * 更新数据，从数据库中获取以及下载的作者数据，并以此为基准获取该作者为下载/记录的画作
-     * 会对画作数据进行初始化到picture数据库中，图片状态为默认状态
+     * 批量更新所有已关注画师的作品
+     * <p>
+     * 功能流程：
+     * 1. 获取数据库中所有Pixiv画师信息
+     * 2. 为每个画师获取最新作品列表
+     * 3. 剔除已下载的作品
+     * 4. 处理图片组数据
+     * 5. 保存新增作品到数据库并下载
+     * </p>
      */
     @Override
 //    @Async("threadPoolExecutor")
     public void update() {
-        //从数据库中获取有关的作者id
-        List<User> userList = userService.list(new LambdaQueryWrapper<User>().eq(User::getType, SourceConstant.PIXIV_SOURCE));
-        userList.forEach(user -> {
-            // 针对每一个作者获取所有图片列表数据的基础数据，此时数据不存在url和title，并且未对图片组数据进行处理
-            List<Picture> pictureList = pixivUtils.initPictureList(user.getUserId(), user.getUserName());
-            if (pictureList != null && !pictureList.isEmpty()) {
+        //从数据库中获取所有关注的Pixiv画师
+        List<User> followedArtistList = userService.list(new LambdaQueryWrapper<User>().eq(User::getType, SourceConstant.PIXIV_SOURCE));
+        followedArtistList.forEach(artist -> {
+            // 针对每一个画师获取所有图片列表数据的基础数据，此时数据不存在url和title，并且未对图片组数据进行处理
+            List<Picture> initialPictureList = pixivUtils.initPictureList(artist.getUserId(), artist.getUserName());
+            if (initialPictureList != null && !initialPictureList.isEmpty()) {
                 LambdaQueryWrapper<Picture> lambdaQueryWrapper = new LambdaQueryWrapper<Picture>()
                         .eq(Picture::getType, SourceConstant.PIXIV_SOURCE)
-                        .eq(Picture::getUserId, user.getUserId());
-                List<Picture> pictures = pictureService.list(lambdaQueryWrapper);
+                        .eq(Picture::getUserId, artist.getUserId());
+                List<Picture> existingPictureList = pictureService.list(lambdaQueryWrapper);
                 // 剔除已下载的图片数据
-                pictureList.removeAll(pictures);
-                if (!pictureList.isEmpty()) {
+                List<Picture> newPictureList = new ArrayList<>(initialPictureList);
+                newPictureList.removeAll(existingPictureList);
+                if (!newPictureList.isEmpty()) {
                     // 获取最终所需的图片数据，并对图片组数据进行处理
-                    pictureList = getResultPictureList(user.getUserId(), pictureList);
-                    if (pictureList != null && !pictureList.isEmpty()) {
-                        boolean saveBatch = pictureService.saveBatch(pictureList);
-                        log.info("画师：" + user.getUserName() + "\tid：" + user.getUserId() + "\t" + pictureList.size() + "张新画作");
-                        log.info("图片数据持久化：" + (saveBatch ? "成功" : "失败"));
-                        if (!saveBatch) {
-                            log.error("请重新再试，参数为：{}", user);
+                    List<Picture> processedPictureList = getResultPictureList(artist.getUserId(), newPictureList);
+                    if (processedPictureList != null && !processedPictureList.isEmpty()) {
+                        boolean isBatchSaved = pictureService.saveBatch(processedPictureList);
+                        log.info("画师：" + artist.getUserName() + "\tid：" + artist.getUserId() + "\t" + processedPictureList.size() + "张新画作");
+                        log.info("图片数据持久化：{}", isBatchSaved ? "成功" : "失败");
+                        if (!isBatchSaved) {
+                            log.error("请重新再试，参数为：{}", artist);
                             return;
                         }
-                        downloadPicture(pictureList,(pictures.size() < 1 || pictureList.size() > 100));
+                        // 如果是新关注的画师（没有已下载图片）或者新画作数量超过100，则使用用户模式下载
+                        boolean useUserMode = (existingPictureList.size() < 1 || processedPictureList.size() > 100);
+                        downloadPicture(processedPictureList, useUserMode);
                     }
                 } else {
-                    log.info("画师：" + user.getUserName() + "\tid：" + user.getUserId() + "\t暂无新画作");
+                    log.info("画师：{}\tid：{}\t暂无新画作", artist.getUserName(), artist.getUserId());
                 }
             } else {
                 log.info("图片初始化失败，请检查网站是否更新");
@@ -152,6 +183,17 @@ public class PixivServiceImpl implements PixivService {
         log.info("更新完成");
     }
 
+    /**
+     * 重试下载失败或未完成的图片
+     * <p>
+     * 功能流程：
+     * 1. 获取状态为默认或失败的图片
+     * 2. 重新下载这些图片
+     * 3. 更新下载成功的图片状态
+     * 4. 保存或更新失败图片记录
+     * 5. 移除下载成功的失败记录
+     * </p>
+     */
     @Override
 //    @Async("threadPoolExecutor")
     public void againDownload() {
@@ -173,17 +215,74 @@ public class PixivServiceImpl implements PixivService {
         }
     }
 
+    /**
+     * 更新Pixiv最新作品
+     * <p>
+     * 功能流程：
+     * 1. 获取Pixiv最新作品列表
+     * 2. 解析获取作品ID列表
+     * 3. 剔除已下载的作品
+     * 4. 获取作品详细信息
+     * 5. 筛选已关注画师的作品
+     * 6. 处理图片组数据
+     * 7. 保存新增作品到数据库并下载
+     * </p>
+     */
     @Override
 //    @Async("threadPoolExecutor")
     public void updateByNow() {
-        //https://www.pixiv.net/ajax/follow_latest/illust?p=1&mode=all&lang=zh&version=b461aaba721300d63f4506a979bf1c3e6c11df13
-        String version = RandomUtil.randomString(40);
-        InputStream inputStream = pixivUtils.getInputStream("https://www.pixiv.net/ajax/follow_latest/illust?p=1&mode=all&lang=zh&version=" + version);
-        if (inputStream == null) {
-            log.error("获取更新数据失败");
+        // 1. 获取最新作品ID列表
+        List<Picture> latestPictureList = getLatestPictureIdList();
+        if (latestPictureList == null || latestPictureList.isEmpty()) {
             return;
         }
-        Matcher matcher;
+
+        // 2. 过滤已下载的作品
+        List<Picture> newPictureList = filterDownloadedPictures(latestPictureList);
+        if (newPictureList.isEmpty()) {
+            log.info("此页面所有数据已经完成更新");
+            return;
+        }
+
+        // 3. 获取作品详细信息
+        List<Picture> detailedPictureList = getDetailedPictureInfo(newPictureList);
+        if (detailedPictureList.isEmpty()) {
+            log.info("获取最新数据为空");
+            return;
+        }
+
+        // 4. 筛选已关注画师的作品
+        List<Picture> followedArtistPictureList = filterFollowedArtistPictures(detailedPictureList);
+        if (followedArtistPictureList.isEmpty()) {
+            log.info("被标记的画师更新已经完成下载");
+            return;
+        }
+
+        // 5. 处理图片组数据
+        List<Picture> finalPictureList = processPictureGroups(followedArtistPictureList);
+        if (finalPictureList.isEmpty()) {
+            log.info("处理图片组后没有需要下载的作品");
+            return;
+        }
+
+        // 6. 保存并下载作品
+        saveAndDownloadPictures(finalPictureList);
+        log.info("下载更新完成");
+    }
+
+    /**
+     * 获取最新作品的ID列表
+     * @return 包含作品ID的图片列表
+     */
+    private List<Picture> getLatestPictureIdList() {
+        String version = RandomUtil.randomString(40);
+        String url = "https://www.pixiv.net/ajax/follow_latest/illust?p=1&mode=all&lang=zh&version=" + version;
+        InputStream inputStream = pixivUtils.getInputStream(url);
+        if (inputStream == null) {
+            log.error("获取更新数据失败");
+            return null;
+        }
+
         try {
             String urlResult = pixivUtils.getUrlResult(inputStream);
             Object body = JSONUtil.parseObj(urlResult).get("body");
@@ -191,95 +290,106 @@ public class PixivServiceImpl implements PixivService {
             Object ids = JSONUtil.parseObj(page).get("ids");
 
             // 截取所有的图片Id
-            matcher = Pattern.compile("[0-9]+").matcher(ids.toString());
+            Matcher matcher = Pattern.compile("[0-9]+").matcher(ids.toString());
+            List<Picture> pictureList = new ArrayList<>();
+            while (matcher.find()) {
+                String pictureIdStr = matcher.group();
+                Picture picture = new Picture();
+                picture.setPictureId(Long.valueOf(pictureIdStr));
+                picture.setPageCount(1);
+                picture.setType(SourceConstant.PIXIV_SOURCE);
+                picture.setStatus(PictureStatusConstant.DEFAULT_STATUS);
+                pictureList.add(picture);
+            }
+
+            if (pictureList.isEmpty()) {
+                log.info("数据异常，没有获取到最新更新的任何相关数据");
+            }
+            return pictureList;
         } catch (Exception e) {
             log.error("未获取到正确的数据,解析失败", e);
-            return;
+            return null;
         }
-        List<Picture> pictureList = new ArrayList<>();
-        while (matcher.find()) {
-            String pictureId = matcher.group();
-            Picture picture = new Picture();
-            picture.setPictureId(Long.valueOf(pictureId));
-            picture.setPageCount(1);
-            picture.setType(SourceConstant.PIXIV_SOURCE);
-            picture.setStatus(PictureStatusConstant.DEFAULT_STATUS);
-            pictureList.add(picture);
-        }
-        if (pictureList.isEmpty()) {
-            log.info("数据异常，没有获取到最新更新的任何相关数据");
-            return;
-        }
-        //获取数据库中的对应数据，用来排除已下载或正在下载的图片
-        List<Long> pictureIdList = pictureList.stream().map(Picture::getPictureId).collect(Collectors.toList());
+    }
+
+    /**
+     * 过滤已下载的作品
+     * @param pictureList 最新作品列表
+     * @return 未下载的作品列表
+     */
+    private List<Picture> filterDownloadedPictures(List<Picture> pictureList) {
+        List<Long> pictureIdList = pictureList.stream()
+                .map(Picture::getPictureId)
+                .collect(Collectors.toList());
         List<Picture> dbPictureList = pictureService.list(new LambdaQueryWrapper<Picture>()
                 .in(Picture::getPictureId, pictureIdList)
                 .eq(Picture::getType, SourceConstant.PIXIV_SOURCE));
-        // 获取最终可能需要进行下载的图片
-        pictureList.removeAll(dbPictureList);
-        if (pictureList.isEmpty()) {
-            log.info("此页面所有数据已经完成更新");
-            return;
-        }
-        // 获取最新更新中的用户Id
-        pictureList = pictureList.stream()
+
+        List<Picture> newPictureList = new ArrayList<>(pictureList);
+        newPictureList.removeAll(dbPictureList);
+        return newPictureList;
+    }
+
+    /**
+     * 获取作品详细信息
+     * @param pictureList 作品列表
+     * @return 包含详细信息的作品列表
+     */
+    private List<Picture> getDetailedPictureInfo(List<Picture> pictureList) {
+        return pictureList.stream()
                 .map(picture -> pixivUtils.getPictureInfo(picture.getPictureId()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
-        if (pictureList.isEmpty()) {
-            log.info("获取最新数据为空");
-            return;
-        }
-        Set<Long> userIdList = pictureList.stream().map(Picture::getUserId).collect(Collectors.toSet());
+    }
 
+    /**
+     * 筛选已关注画师的作品
+     * @param pictureList 作品列表
+     * @return 已关注画师的作品列表
+     */
+    private List<Picture> filterFollowedArtistPictures(List<Picture> pictureList) {
         // 获取数据库中的用户信息
-        Map<Long, String> dbUserList = userService.list(new LambdaQueryWrapper<User>().eq(User::getType, SourceConstant.PIXIV_SOURCE))
-                .stream().collect(Collectors.toMap(User::getUserId, User::getUserName));
+        Map<Long, String> followedArtistMap = userService.list(new LambdaQueryWrapper<User>()
+                .eq(User::getType, SourceConstant.PIXIV_SOURCE))
+                .stream()
+                .collect(Collectors.toMap(User::getUserId, User::getUserName));
 
         // 获取最新更新中被标记的画师Id
-        userIdList.retainAll(dbUserList.keySet());
-        if (userIdList.isEmpty()) {
-            log.info("暂无所需更新的数据");
-            return;
-        }
+        Set<Long> followedArtistIds = followedArtistMap.keySet();
 
-        pictureList = pictureList.stream().map(picture -> {
-            boolean flag = false;
-            for (Long userId : userIdList) {
-                if (userId.equals(picture.getUserId())) {
-                    // 替换成数据库中的userName
-                    picture.setUserName(dbUserList.get(userId));
-                    flag = true;
-                    break;
-                }
-            }
-            return flag ? picture : null;
-        }).collect(Collectors.toList());
+        return pictureList.stream()
+                .filter(picture -> followedArtistIds.contains(picture.getUserId()))
+                .peek(picture -> picture.setUserName(followedArtistMap.get(picture.getUserId())))
+                .collect(Collectors.toList());
+    }
 
-        // 去除null
-        pictureList.removeAll(Collections.singleton(null));
-        if (pictureList.isEmpty()) {
-            log.info("被标记的画师更新已经完成下载");
-            return;
-        }
-
-        ArrayList<Picture> tempPictureList = new ArrayList<>(pictureList);
-        pictureList = new ArrayList<>();
-        for (Picture picture : tempPictureList) {
+    /**
+     * 处理图片组数据
+     * @param pictureList 作品列表
+     * @return 处理后的作品列表
+     */
+    private List<Picture> processPictureGroups(List<Picture> pictureList) {
+        List<Picture> finalPictureList = new ArrayList<>();
+        for (Picture picture : pictureList) {
             if (picture.getPageCount() == 1) {
-                pictureList.add(picture);
+                finalPictureList.add(picture);
             } else {
                 for (int i = 0; i < picture.getPageCount(); i++) {
                     Picture resultPicture = pixivUtils.getResultPicture(i, picture);
-                    pictureList.add(resultPicture);
+                    finalPictureList.add(resultPicture);
                 }
             }
         }
+        return finalPictureList;
+    }
 
+    /**
+     * 保存并下载作品
+     * @param pictureList 作品列表
+     */
+    private void saveAndDownloadPictures(List<Picture> pictureList) {
         pictureService.saveBatch(pictureList);
-
         downloadPicture(pictureList);
-        log.info("下载更新完成");
     }
 
     /**
@@ -445,22 +555,24 @@ public class PixivServiceImpl implements PixivService {
      * 正式下载图片 会对下载时间进行统计 更新数据库中的图片下载状态，并将下载失败的图片另存数据库
      *
      * @param pictureList 图片列表 userId/userName/PictureId/pageCount/type/status
-     * @param userFlag  是否需要隔离用户下载
+     * @param useUserMode 是否需要隔离用户下载
      */
-    private void downloadPicture(List<Picture> pictureList, boolean userFlag) {
+    private void downloadPicture(List<Picture> pictureList, boolean useUserMode) {
         if (!pictureList.isEmpty()) {
             log.info("开始下载");
-            long start = System.currentTimeMillis();
-            int size = pictureList.size();
-            AtomicInteger i = new AtomicInteger(0);
+            long startTime = System.currentTimeMillis();
+            int totalCount = pictureList.size();
+            AtomicInteger completedCount = new AtomicInteger(0);
+            
             pictureList.forEach(picture -> {
                 InputStream inputStream = pixivUtils.getInputStream(picture);
                 if (inputStream != null) {
                     String downloadDir = baseDownloadDir + "\\" + SourceConstant.PIXIV_SOURCE + "\\" + picture.getUserName() + "-" + picture.getUserId() + "\\";
-                    boolean downloadResult = PictureUtils.downloadPicture(downloadDir, picture, inputStream, SourceConstant.PIXIV_SOURCE, userFlag);
-                    if (downloadResult) {
+                    boolean isDownloaded = PictureUtils.downloadPicture(downloadDir, picture, inputStream, SourceConstant.PIXIV_SOURCE, useUserMode);
+                    
+                    if (isDownloaded) {
                         System.out.println(picture);
-                        System.out.println(picture.getUserName() + "的第" + (i.incrementAndGet()) + "张图片下载完成，剩余" + (size - i.get()) + "张图片等待下载");
+                        System.out.println(picture.getUserName() + "的第" + (completedCount.incrementAndGet()) + "张图片下载完成，剩余" + (totalCount - completedCount.get()) + "张图片等待下载");
                         picture.setStatus(PictureStatusConstant.SUCCESS_STATUS);
                     } else {
                         picture.setStatus(PictureStatusConstant.FAIL_STATUS);
@@ -472,13 +584,14 @@ public class PixivServiceImpl implements PixivService {
                     FailPicture failPicture = new FailPicture(picture);
                     failPictureService.saveOrUpdate(failPicture);
                 }
+                
                 pictureService.saveOrUpdate(picture);
             });
-            long end = System.currentTimeMillis();
-            System.out.println("总需要下载" + pictureList.size() + "份图片");
-            System.out.println("下载完成，耗时：" + (end - start) / 1000 + "秒");
+            
+            long endTime = System.currentTimeMillis();
+            System.out.println("总需要下载" + totalCount + "份图片");
+            System.out.println("下载完成，耗时：" + (endTime - startTime) / 1000 + "秒");
         }
-
     }
 
     /**

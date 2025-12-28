@@ -53,7 +53,7 @@ public class PixivUtils {
         }
         String result = getUrlResult(inputStream);
         if (!StringUtils.hasText(result)) {
-            log.info("获取所有作品数据失败，请检查网络情况");
+            log.error("获取所有作品数据失败，请检查网络情况");
             return null;
         }
 
@@ -91,7 +91,7 @@ public class PixivUtils {
         }
         String result = getUrlResult(inputStream);
         if (!StringUtils.hasText(result)) {
-            log.info("获取作者名称失败，请检查网络情况");
+            log.error("获取作者名称失败，请检查网络情况");
             return null;
         }
         Object body = JSONUtil.parseObj(result).get("body");
@@ -143,7 +143,7 @@ public class PixivUtils {
             log.error("文件不存在", fileNotFoundException);
             return null;
         } catch (IOException e) {
-            log.info("建立连接失败，请检查请求头是否有效，也有可能是作者销号了", e);
+            log.error("建立连接失败，请检查请求头是否有效，也有可能是作者销号了", e);
             return null;
         }
         return inputStream;
@@ -163,7 +163,7 @@ public class PixivUtils {
         try {
             inputStream = urlConnection.getInputStream();
         } catch (IOException e) {
-            log.info("获取数据失败，可能是后缀不匹配，也可能是网络问题");
+            log.error("获取数据失败，可能是后缀不匹配，也可能是网络问题", e);
             // 获取源链接
             picture.setStatus(PictureStatusConstant.FAIL_STATUS);
             boolean flag = getPictureOriginalUrl(picture);
@@ -202,7 +202,7 @@ public class PixivUtils {
             urlConnection.setReadTimeout(20000);
             urlConnection.setUseCaches(false);
         } catch (IOException e) {
-            log.info("建立连接失败，请检查代理以及网络情况",e);
+            log.error("建立连接失败，请检查代理以及网络情况",e);
             return null;
         }
         Set<String> keySet = myPixivConfig.getRequestHeader().keySet();
@@ -224,7 +224,7 @@ public class PixivUtils {
             try {
                 inputStreamReader = new InputStreamReader(inputStream, myPixivConfig.getCharsetName());
             } catch (UnsupportedEncodingException e) {
-                log.info("不支持的编码格式",e);
+                log.error("不支持的编码格式",e);
                 return null;
             }
         } else {
@@ -239,7 +239,7 @@ public class PixivUtils {
                 builder.append(line);
             }
         } catch (IOException e) {
-            log.info("获取请求结果失败，请检查网络状态",e);
+            log.error("获取请求结果失败，请检查网络状态",e);
             return null;
         } finally {
             closeConnection(bufferedReader, inputStream, inputStreamReader);
