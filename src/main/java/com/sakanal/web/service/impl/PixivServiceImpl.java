@@ -83,8 +83,8 @@ public class PixivServiceImpl implements PixivService {
         // 获取用户名
         String artistName = pixivUtils.getUserName(userId);
         if (StringUtils.hasText(artistName)) {
-            long existingArtistCount = userService.count(new LambdaQueryWrapper<User>().eq(User::getUserId, userId));
-            if (existingArtistCount == 0) {
+            User existingUser = userService.getOne(new LambdaQueryWrapper<User>().eq(User::getUserId, userId).last("limit 1"));
+            if (existingUser == null) {
                 // 如果数据库中没有该用户的数据则进行新增数据
                 User artist = new User(userId, artistName, SourceConstant.PIXIV_SOURCE);
                 boolean isSaved = userService.save(artist);
@@ -169,7 +169,7 @@ public class PixivServiceImpl implements PixivService {
             List<Picture> processedPictureList = getResultPictureList(userId, newPictureList);
             if (!processedPictureList.isEmpty()) {
                 boolean isBatchSaved = pictureService.saveBatch(processedPictureList);
-                log.info("画师：" + userName + "\tid：" + userId + "\t" + processedPictureList.size() + "张新画作");
+                log.info("画师：{}\tid：{}\t{}张新画作", userName, userId, processedPictureList.size());
                 log.info("图片数据持久化：{}", isBatchSaved ? "成功" : "失败");
                 if (isBatchSaved) {
                     // 根据图片数量决定是否使用用户模式下载
@@ -299,6 +299,7 @@ public class PixivServiceImpl implements PixivService {
 
     /**
      * 获取最新作品ID列表
+     *
      * @return 最新作品ID列表
      */
     private List<Picture> getLatestPictureIdList() {
@@ -374,7 +375,7 @@ public class PixivServiceImpl implements PixivService {
      * @return 包含详细信息的作品列表
      */
     private List<Picture> getDetailedPictureInfo(List<Picture> pictureList) {
-        return pictureList.stream()
+        return pictureList.parallelStream()
                 .map(picture -> pixivUtils.getPictureInfo(picture.getPictureId()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -698,13 +699,20 @@ public class PixivServiceImpl implements PixivService {
      * @param useUserMode 是否需要隔离用户下载
      */
     private void downloadPicture(List<Picture> pictureList, boolean useUserMode) {
-        if (!pictureList.isEmpty()) {
-            log.info("开始下载");
-            long startTime = System.currentTimeMillis();
-            int totalCount = pictureList.size();
-            AtomicInteger completedCount = new AtomicInteger(0);
+        if (pictureList.isEmpty()) {
+            return;
+        }
 
-            pictureList.forEach(picture -> {
+        log.info("开始下载，共{}张图片", pictureList.size());
+        long startTime = System.currentTimeMillis();
+        AtomicInteger completedCount = new AtomicInteger(0);
+        int totalCount = pictureList.size();
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        List<Picture> updatedPictures = Collections.synchronizedList(new ArrayList<>());
+        List<FailPicture> failPictures = Collections.synchronizedList(new ArrayList<>());
+
+        for (Picture picture : pictureList) {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                 try (InputStream inputStream = pixivUtils.getInputStream(picture)) {
                     if (inputStream != null) {
                         String downloadDir = baseDownloadDir + "\\" + SourceConstant.PIXIV_SOURCE + "\\" + picture.getUserName() + "-" + picture.getUserId() + "\\";
@@ -719,28 +727,37 @@ public class PixivServiceImpl implements PixivService {
                             picture.setStatus(PictureStatusConstant.SUCCESS_STATUS);
                         } else {
                             picture.setStatus(PictureStatusConstant.FAIL_STATUS);
-                            FailPicture failPicture = new FailPicture(picture);
-                            failPictureService.saveOrUpdate(failPicture);
+                            failPictures.add(new FailPicture(picture));
                         }
                     } else {
                         picture.setStatus(PictureStatusConstant.DEFAULT_STATUS);
-                        FailPicture failPicture = new FailPicture(picture);
-                        failPictureService.saveOrUpdate(failPicture);
+                        failPictures.add(new FailPicture(picture));
                     }
                 } catch (IOException e) {
                     log.error("处理图片下载时发生IO异常, pictureId={}, errorMessage={}", picture.getPictureId(), e.getMessage(), e);
                     picture.setStatus(PictureStatusConstant.FAIL_STATUS);
-                    FailPicture failPicture = new FailPicture(picture);
-                    failPictureService.saveOrUpdate(failPicture);
+                    failPictures.add(new FailPicture(picture));
                 } finally {
-                    pictureService.saveOrUpdate(picture);
+                    updatedPictures.add(picture);
                 }
-            });
-
-            long endTime = System.currentTimeMillis();
-            log.info("总需要下载{}份图片", totalCount);
-            log.info("下载完成，耗时：{}秒", (endTime - startTime) / 1000);
+            }, executor);
+            futures.add(future);
         }
+
+        // 等待所有下载任务完成
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        // 批量更新数据库，减少数据库操作次数
+        if (!updatedPictures.isEmpty()) {
+            pictureService.updateBatchById(updatedPictures);
+        }
+        if (!failPictures.isEmpty()) {
+            failPictureService.saveOrUpdateBatch(failPictures);
+        }
+
+        long endTime = System.currentTimeMillis();
+        log.info("总需要下载{}份图片", totalCount);
+        log.info("下载完成，耗时：{}秒", (endTime - startTime) / 1000);
     }
 
     /**
