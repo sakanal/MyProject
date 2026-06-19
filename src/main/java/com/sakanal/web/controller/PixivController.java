@@ -19,6 +19,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * Pixiv控制器
+ * 提供Pixiv相关功能的REST API接口
+ * 所有接口都使用@TakeLock注解进行分布式锁控制，防止并发执行
+ * 
  * @author sakanal
  */
 @Slf4j
@@ -32,6 +36,12 @@ public class PixivController {
     @Resource
     private MyPixivConfig myPixivConfig;
 
+    /**
+     * 根据用户ID下载画师的所有作品
+     * 
+     * @param userId 画师的Pixiv用户ID
+     * @return 操作状态信息
+     */
     @TakeLock(lockName = "pixivLock")
     @RequestMapping("/downloadById/{userId}")
     public String downloadById(@PathVariable("userId") Long userId) {
@@ -46,6 +56,11 @@ public class PixivController {
         return msg;
     }
 
+    /**
+     * 批量更新所有已关注画师的作品
+     * 
+     * @return 操作状态信息
+     */
     @TakeLock(lockName = "pixivLock")
     @RequestMapping("/update")
     public String update() {
@@ -53,6 +68,11 @@ public class PixivController {
         return "开始更新";
     }
 
+    /**
+     * 重新下载失败或未完成的图片
+     * 
+     * @return 操作状态信息
+     */
     @TakeLock(lockName = "pixivLock")
     @RequestMapping("/againDownload")
     public String againDownload() {
@@ -60,6 +80,12 @@ public class PixivController {
         return "开始补充下载";
     }
 
+    /**
+     * 保存画师信息到数据库
+     * 
+     * @param userId 画师的Pixiv用户ID
+     * @return 操作结果信息
+     */
     @TakeLock(lockName = "pixivLock")
     @RequestMapping("/saveUser/{userId}")
     public String saveUser(@PathVariable("userId")Long userId){
@@ -73,6 +99,13 @@ public class PixivController {
         return msg;
     }
 
+    /**
+     * 重置指定图片的下载状态为失败状态
+     * 用于手动触发重新下载
+     * 
+     * @param pictureId 图片ID
+     * @return 操作状态信息
+     */
     @TakeLock(lockName = "pixivLock")
     @RequestMapping("/resetState/{pictureId}")
     public String resetState(@PathVariable("pictureId")Long pictureId){
@@ -80,6 +113,11 @@ public class PixivController {
         return "重置状态完成";
     }
 
+    /**
+     * 更新登录用户信息（当前未实现）
+     * 
+     * @return 操作状态信息
+     */
     @TakeLock(lockName = "pixivLock")
     @RequestMapping("/updateLoginUserInfo")
     public String updateLoginUserInfo(){
@@ -88,8 +126,10 @@ public class PixivController {
     
     /**
      * 更新Pixiv配置信息
+     * 支持更新请求头、字符集、用户名、密码等配置
+     * 
      * @param configUpdateDto 配置更新请求参数
-     * @return 更新结果
+     * @return 更新结果信息
      */
     @TakeLock(lockName = "pixivLock")
     @PostMapping("/updateConfig")

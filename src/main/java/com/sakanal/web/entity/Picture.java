@@ -12,9 +12,8 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * <p>
- *
- * </p>
+ * 图片实体类，对应数据库中的 picture 表
+ * 用于存储从 Pixiv 和 Yande 等网站下载的图片信息
  *
  * @author sakanal
  * @since 2023-01-13
@@ -55,6 +54,14 @@ public class Picture implements Serializable {
     private String type;
 
 
+    /**
+     * 设置用户名，自动过滤文件名中的非法字符
+     * 将以下字符替换为安全字符：
+     * - / \ : * ? " < > | 替换为 ·
+     * - 空格替换为 _
+     *
+     * @param userName 原始用户名
+     */
     public void setUserName(String userName) {
         if (userName!=null){
             this.userName = userName.replace("/","·")
@@ -72,6 +79,12 @@ public class Picture implements Serializable {
         }
     }
 
+    /**
+     * 设置标题，自动过滤文件名中的非法字符
+     * 过滤规则与 setUserName 相同
+     *
+     * @param title 原始标题
+     */
     public void setTitle(String title) {
         if (title!=null){
             this.title = title.replace("/","·")

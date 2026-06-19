@@ -38,6 +38,15 @@ import static com.sakanal.web.constant.SourceConstant.YANDE_SOURCE;
 import static com.sakanal.web.constant.SourceConstant.YANDE_URL;
 
 /**
+ * Yande服务实现类
+ * 负责处理Yande.re网站的图片下载业务
+ * 
+ * 主要功能包括：
+ * 1. 根据标签（tags）搜索并下载图片
+ * 2. 批量更新已关注标签的图片
+ * 3. 重试下载失败的图片
+ * 4. 并发下载所有页面的图片
+ * 
  * @author sakanal
  */
 @Slf4j
@@ -57,9 +66,14 @@ public class YandeServiceImpl implements YandeService {
     private ThreadPoolExecutor executor;
 
     /**
-     * 下载图片
+     * 下载指定标签的所有图片
+     * 功能流程：
+     * 1. 初始化SSL设置
+     * 2. 获取总页数
+     * 3. 创建下载目录
+     * 4. 并发下载所有页面的图片
      *
-     * @param tags 搜索项，最终会作为用户名使用
+     * @param tags 搜索标签，最终会作为用户名使用
      */
     @Override
     public void download(String tags) {
@@ -87,6 +101,12 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 并发下载所有页面的图片
+     * 使用CompletableFuture实现异步并发下载
+     *
+     * @param baseUrl          基础URL
+     * @param tags             搜索标签
+     * @param tempDownloadDir  临时下载目录路径
+     * @param pages            总页数
      */
     private void downloadAllPages(String baseUrl, String tags, String tempDownloadDir, int pages) {
         List<CompletableFuture<Void>> pageFutures = new ArrayList<>();
@@ -106,6 +126,15 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 处理单个页面的图片下载
+     * 异步获取页面图片列表，然后下载该页面的所有图片
+     *
+     * @param baseUrl             基础URL
+     * @param tags                搜索标签
+     * @param tempDownloadDir     临时下载目录路径
+     * @param currentPage         当前页码
+     * @param allUpdatedPictures  所有更新的图片列表（线程安全）
+     * @param allFailPictures     所有失败的图片列表（线程安全）
+     * @return CompletableFuture对象
      */
     private CompletableFuture<Void> processSinglePage(
             String baseUrl, String tags, String tempDownloadDir, int currentPage,
@@ -131,6 +160,13 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 下载单个页面内的所有图片
+     * 使用线程池并发下载该页面的所有图片
+     *
+     * @param pictures           图片列表
+     * @param currentPage        当前页码
+     * @param tempDownloadDir    临时下载目录路径
+     * @param allUpdatedPictures 所有更新的图片列表（线程安全）
+     * @param allFailPictures    所有失败的图片列表（线程安全）
      */
     private void downloadPicturesForPage(
             List<Picture> pictures, int currentPage, String tempDownloadDir,
@@ -175,6 +211,10 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 批量更新数据库
+     * 更新所有下载完成的图片状态，并保存失败的图片记录
+     *
+     * @param allUpdatedPictures 所有更新的图片列表
+     * @param allFailPictures    所有失败的图片列表
      */
     private void updateDatabase(List<Picture> allUpdatedPictures, List<FailPicture> allFailPictures) {
         if (!allUpdatedPictures.isEmpty()) {
@@ -241,9 +281,14 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 获取总页数
+     * 同时处理以下逻辑：
+     * 1. 创建下载目录（如果不存在）
+     * 2. 如果目录已存在，从数据库中获取下载失败的图片进行补充下载
      *
      * @param pageDocument 页面数据
-     * @param tags         搜索项，作为作者名保存
+     * @param tags         搜索标签，作为作者名保存
+     * @param downloadDir  下载目录路径
+     * @return 总页数，如果创建文件夹失败返回0
      */
     private int getPages(Document pageDocument, String tags, String downloadDir) {
         int total = 0;
@@ -306,12 +351,12 @@ public class YandeServiceImpl implements YandeService {
     }
 
     /**
-     * 获取当前页的所有图片数据--id(无效数据，用户表id)/pictureId/src/userName(tags)/type
-     * 保存未下载的图片数据到数据库中
-     *
-     * @param document 页面数据
-     * @param tags     搜索项/作者名
-     * @return 数据库没有下载记录的图片数据
+     * 获取当前页的所有图片数据
+     * 解析页面DOM，提取图片信息并保存到数据库
+     * 
+     * @param document 页面DOM数据
+     * @param tags     搜索标签/作者名
+     * @return 数据库没有下载记录的图片数据列表，如果没有新图片返回null
      */
     private List<Picture> initPictureList(Document document, String tags) {
         Elements li = Objects.requireNonNull(document.getElementById("post-list-posts")).getElementsByTag("li");
@@ -371,9 +416,11 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 下载图片
-     * 如果图片src存储的是图片详细页面，则获取图片网络地址并更新数据库的图片源src
+     * 如果图片src存储的是图片详细页面URL，则先获取实际的图片网络地址并更新数据库
      *
-     * @param picture 图片数据
+     * @param picture     图片数据
+     * @param downloadDir 下载目录路径
+     * @return 下载是否成功
      */
     private boolean download(Picture picture, String downloadDir) {
         boolean check = isPictureInfoUrl(picture);
@@ -388,10 +435,11 @@ public class YandeServiceImpl implements YandeService {
     }
 
     /**
-     * 检测 src 是图片的详细页面的路径还是图片网络地址
+     * 检测src是图片的详细页面URL还是直接的图片网络地址
      *
-     * @param picture 图片数据 使用src
-     * @return true-是图片详细页面的路径 false-是图片网络地址
+     * @param picture 图片数据，使用src属性进行判断
+     * @return true-是图片详细页面的URL，需要进一步解析
+     *         false-是直接的图片网络地址，可以直接下载
      */
     private boolean isPictureInfoUrl(Picture picture) {
         //https://files.yande.re/image/f9fcee6e7b8dd0cbf2d291d8b485d0a2/yande.re%201021573%20bondage%20breasts%20censored%20cum%20dress%20extreme_content%20garter%20iijima_masashi%20nipples%20no_bra%20nopan%20pussy%20pussy_juice%20skirt_lift%20tentacles%20wet%20wings.png
@@ -403,8 +451,10 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 从图片详细页面中获取图片的网络地址
+     * 优先获取PNG格式的图片，如果没有则获取高分辨率版本（highres）
      *
-     * @param picture 图片数据，要有src，src需要为图片页面目录 eg:https://yande.re//post/show/1026154
+     * @param picture 图片数据，src需要为图片页面URL，例如：https://yande.re//post/show/1026154
+     * @return 是否成功获取到图片地址
      */
     private boolean getPictureInfo(Picture picture) {
         Document documentImage = getDocument(picture.getSrc(), "获取图片详细信息");
@@ -433,6 +483,9 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 初始化SSL设置
+     * 忽略SSL证书验证，用于访问HTTPS网站
+     *
+     * @return 初始化是否成功
      */
     private boolean initSsl() {
         try {
@@ -446,6 +499,11 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 获取页面文档
+     * 使用Jsoup解析URL，设置10秒超时
+     *
+     * @param url           页面URL
+     * @param operationDesc 操作描述，用于日志输出
+     * @return 页面Document对象，获取失败返回null
      */
     private Document getDocument(String url, String operationDesc) {
         try {
@@ -462,6 +520,11 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 带重试机制的页面文档获取
+     * 如果第一次获取失败，会再尝试一次
+     *
+     * @param url           页面URL
+     * @param operationDesc 操作描述
+     * @return 页面Document对象
      */
     private Document getDocumentWithRetry(String url, String operationDesc) {
         Document document = getDocument(url, operationDesc);
@@ -474,6 +537,9 @@ public class YandeServiceImpl implements YandeService {
 
     /**
      * 如果用户不存在则创建
+     * 用于在首次下载某个标签的图片时创建对应的用户记录
+     *
+     * @param userName 用户名（标签名）
      */
     private void createUserIfNotExists(String userName) {
         User existingUser = userService.getOne(new LambdaQueryWrapper<User>()

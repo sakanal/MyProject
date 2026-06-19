@@ -9,9 +9,8 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * <p>
- *
- * </p>
+ * 用户实体类，对应数据库中的 user 表
+ * 用于存储画师信息，包括 Pixiv 和 Yande 等平台的画师
  *
  * @author sakanal
  * @since 2023-01-13
@@ -43,6 +42,13 @@ public class User implements Serializable {
     @TableLogic
     private int isDeleted;
 
+    /**
+     * 构造用户对象
+     *
+     * @param userId   平台用户ID
+     * @param userName 用户名
+     * @param type     来源类型（Pixiv/Yande）
+     */
     public User(Long userId, String userName, String type) {
         this.userId = userId;
         this.userName = userName;

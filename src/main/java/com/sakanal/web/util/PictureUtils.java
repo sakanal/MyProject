@@ -9,10 +9,25 @@ import java.io.*;
 import java.net.URL;
 
 /**
+ * 图片下载工具类
+ * 提供从不同图片源（Pixiv、Yande）下载图片的通用方法
+ * 支持下载进度统计、文件复制等功能
+ *
  * @author sakanal
  */
 @Slf4j
 public class PictureUtils {
+
+    /**
+     * 下载图片的入口方法，根据图片来源类型选择对应的下载策略
+     *
+     * @param downloadDir   下载目录路径
+     * @param picture       图片实体对象，包含下载所需的所有信息
+     * @param inputStream   图片输入流（Pixiv使用）
+     * @param type          图片来源类型（Pixiv/Yande）
+     * @param userFlag      是否使用用户模式下载（true-隔离用户下载，false-普通下载）
+     * @return 下载是否成功
+     */
     public static boolean downloadPicture(String downloadDir, Picture picture, InputStream inputStream, String type, boolean userFlag) {
         switch (type) {
             case SourceConstant.YANDE_SOURCE: {
@@ -28,6 +43,15 @@ public class PictureUtils {
         }
     }
 
+    /**
+     * 下载图片的简化版本，默认不使用用户模式
+     *
+     * @param downloadDir   下载目录路径
+     * @param picture       图片实体对象
+     * @param inputStream   图片输入流
+     * @param type          图片来源类型
+     * @return 下载是否成功
+     */
     public static boolean downloadPicture(String downloadDir, Picture picture, InputStream inputStream, String type) {
         return downloadPicture(downloadDir, picture, inputStream, type, false);
     }
@@ -184,6 +208,13 @@ public class PictureUtils {
         }
     }
 
+    /**
+     * 从URL中提取文件后缀
+     * 如果URL格式不正确或为空，则默认返回"jpg"
+     *
+     * @param src 图片URL地址
+     * @return 文件后缀名（不含点号）
+     */
     private static String getSuffix(String src) {
         if (src == null || src.trim().isEmpty()) {
             log.error("获取文件后缀失败：URL为空");

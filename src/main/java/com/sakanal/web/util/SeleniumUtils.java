@@ -13,6 +13,10 @@ import org.springframework.context.annotation.Configuration;
 import javax.annotation.Resource;
 
 /**
+ * Selenium工具类
+ * 用于自动化浏览器操作，当前主要用于获取Pixiv的Cookie信息
+ * 配置前缀：system.selenium
+ *
  * @author sakanal
  */
 @Slf4j
@@ -20,13 +24,26 @@ import javax.annotation.Resource;
 @Configuration
 @ConfigurationProperties(prefix = "system.selenium")
 public class SeleniumUtils {
+    /**
+     * WebDriver驱动名称，用于设置系统属性
+     */
     private String driverName;
+    
+    /**
+     * WebDriver驱动文件路径
+     */
     private String driverDir;
     @Resource
     private MyWebConfig myWebConfig;
     @Resource
     private MyPixivConfig myPixivConfig;
 
+    /**
+     * 获取配置了代理的WebDriver实例
+     * 使用Edge浏览器，并配置代理服务器和跨域允许参数
+     *
+     * @return 配置好的WebDriver实例
+     */
     public WebDriver getWebDriver() {
         System.setProperty(driverName, driverDir);
         EdgeOptions edgeOptions = new EdgeOptions();

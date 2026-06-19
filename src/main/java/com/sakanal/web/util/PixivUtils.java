@@ -26,6 +26,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
+ * Pixiv工具类，提供与Pixiv网站交互的各种方法
+ * 包括获取画师信息、图片列表、图片详情等功能
+ *
  * @author sakanal
  */
 @Slf4j
@@ -33,6 +36,12 @@ import java.util.regex.Pattern;
 @Configuration
 public class PixivUtils {
 
+    /**
+     * 数字匹配正则表达式，用于从JSON中提取图片ID等数字信息
+     */
+    /**
+     * 数字匹配正则表达式，用于从JSON中提取图片ID等数字信息
+     */
     public static Pattern NUMBER_PATTERN = Pattern.compile("[0-9]+");
 
     @Resource
@@ -42,11 +51,13 @@ public class PixivUtils {
 
 
     /**
-     * 获取该画师的所有作品数据，对结果进行转换  解析数据，获取pictureId，设置userId/userName/PictureId/pageCount/type/status
+     * 获取指定画师的所有作品ID列表
+     * 通过调用Pixiv的Ajax接口获取画师的所有作品信息
      *
-     * @param userId   当前用户id
-     * @param userName 当前用户姓名
-     * @return List<Picture> userId/userName/PictureId/pageCount/type/status
+     * @param userId   画师的Pixiv用户ID
+     * @param userName 画师的用户名
+     * @return 作品列表，包含userId、userName、pictureId、pageCount、type、status等基础信息
+     *         如果获取失败则返回null
      */
     public List<Picture> initPictureList(Long userId, String userName) {
         String allPictureAjaxUrl = "https://www.pixiv.net/ajax/user/" + userId + "/profile/all";
@@ -90,10 +101,11 @@ public class PixivUtils {
 
 
     /**
-     * 获取作者名称
+     * 获取画师的用户名
+     * 通过调用Pixiv的用户资料接口获取画师的显示名称
      *
-     * @param userId 作者id
-     * @return 作者名称
+     * @param userId 画师的Pixiv用户ID
+     * @return 画师的用户名（已去除" - pixiv"后缀），获取失败返回null
      */
     public String getUserName(Long userId) {
         String ajaxUrl = "https://www.pixiv.net/ajax/user/" + userId + "/profile/top";
@@ -125,11 +137,12 @@ public class PixivUtils {
 
 
     /**
-     * 获取图片组，替换url中的图片组编号
+     * 处理图片组数据，为图片组中的每一张图片生成独立的Picture对象
+     * 通过替换URL中的页码标识符（_p0, _p1, ...）来生成每张图片的URL
      *
-     * @param i          当前图片的count值
-     * @param oldPicture 当前pictureId模板
-     * @return 最终图片数据，相同的pictureId，不同的pageCount以及src
+     * @param i          当前图片在图片组中的索引（从0开始）
+     * @param oldPicture 原始图片对象，作为模板使用
+     * @return 新的Picture对象，包含对应页码的URL和pageCount
      */
     public Picture getResultPicture(int i, Picture oldPicture) {
         Picture picture = new Picture();
@@ -140,10 +153,11 @@ public class PixivUtils {
     }
 
     /**
-     * 根据链接获取数据，通用
+     * 根据URL获取网络连接的输入流
+     * 统一处理各种网络异常，包括SSL异常、超时异常、文件不存在等
      *
-     * @param url 链接
-     * @return inputStream数据
+     * @param url 目标URL地址
+     * @return 输入流对象，获取失败返回null
      */
     public InputStream getInputStream(String url) {
         URLConnection urlConnection = getUrlConnection(url);
@@ -167,10 +181,11 @@ public class PixivUtils {
     }
 
     /**
-     * 根据图片url获取图片数据，如果获取失败则尝试获取原始URL
+     * 根据Picture对象获取图片的输入流
+     * 如果首次获取失败，会尝试获取原始图片链接（针对缩略图URL的情况）
      *
-     * @param picture 图片信息，需要其中的src数据
-     * @return 图片源数据
+     * @param picture 图片信息对象，需要包含有效的src属性
+     * @return 图片输入流，获取失败返回null
      */
     public InputStream getInputStream(Picture picture) {
         InputStream inputStream = getInputStream(picture.getSrc());
@@ -227,10 +242,11 @@ public class PixivUtils {
     }
 
     /**
-     * 转换链接数据
+     * 将输入流转换为字符串
+     * 使用配置的字符集进行编码转换
      *
-     * @param inputStream 获取到的链接数据
-     * @return 转换后的String类型数据
+     * @param inputStream 输入流对象
+     * @return 转换后的字符串，转换失败返回null
      */
     public String getUrlResult(InputStream inputStream) {
         try (InputStreamReader inputStreamReader = createInputStreamReader(inputStream);
@@ -277,9 +293,12 @@ public class PixivUtils {
 
     /**
      * 获取高清图片链接
+     * 将Pixiv的缩略图URL转换为原图URL
+     * 例如：https://i.pximg.net/c/250x250_80_a2/img-master/img/2022/07/06/00/13/07/99529275_p0_square1200.jpg
+     * 转换为：https://i.pximg.net/img-original/img/2022/07/06/00/13/07/99529275_p0.jpg
      *
-     * @param src 原始图片连接 https://i.pximg.net/c/250x250_80_a2/img-master/img/2022/07/06/00/13/07/99529275_p0_square1200.jpg
-     * @return 高清图片连接 https://i.pximg.net/img-original/img/2022/07/06/00/13/07/99529275_p0.jpg
+     * @param src 原始缩略图链接
+     * @return 高清原图链接
      */
     public String getRealSrc(String src) {
         src = src.replace("c/250x250_80_a2/", "").replace("_square1200", "");
@@ -289,10 +308,12 @@ public class PixivUtils {
     }
 
     /**
-     * 获取原图连接
+     * 获取图片的原始链接
+     * 通过调用Pixiv的Ajax接口获取图片的详细信息，包括原图URL
+     * 对于GIF文件（illustType==2）不会获取原图链接
      *
-     * @param picture 图片，只需要图片id即可
-     * @return 如果是gif返回null，否则返回原图链接，不需要考虑后缀的问题
+     * @param picture 图片对象，需要包含有效的pictureId
+     * @return 是否成功获取到原图链接（GIF文件返回false）
      */
     public boolean getPictureOriginalUrl(Picture picture) {
         String url = "https://www.pixiv.net/ajax/illust/" + picture.getPictureId();
@@ -326,10 +347,12 @@ public class PixivUtils {
     }
 
     /**
-     * 根据图片id获取图片的所有所需信息，如果是图片组则只有首张图片的信息，pageCount会>1
+     * 根据图片ID获取图片的完整下载信息
+     * 包括userId、userName、title、pageCount、src等
+     * 如果是图片组，只返回首张图片的信息，但pageCount会大于1
      *
-     * @param pictureId 图片id
-     * @return 该图片的所有下载所需的信息
+     * @param pictureId 图片的Pixiv作品ID
+     * @return 包含完整信息的Picture对象，获取失败返回null
      */
     public Picture getPictureInfo(Long pictureId) {
         //https://www.pixiv.net/ajax/illust/110090680?lang=zh&version=b461aaba721300d63f4506a979bf1c3e6c11df13 可以获取到所有的数据

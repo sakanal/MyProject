@@ -159,7 +159,7 @@ public class PixivServiceImpl implements PixivService {
      * @param userName            用户名
      * @param initialPictureList  初始图片列表
      * @param existingPictureList 已存在的图片列表
-     * @param defaultUseUserMode  默认是否使用用户模式下载
+     * @param defaultUseUserMode  默认是否使用用户模式下载（用户模式会将图片下载到user目录而非temp目录）
      */
     private void processNewPictures(Long userId, String userName, List<Picture> initialPictureList, List<Picture> existingPictureList, boolean defaultUseUserMode) {
         // 剔除已下载的图片数据
@@ -574,16 +574,17 @@ public class PixivServiceImpl implements PixivService {
 
 
     /**
-     * 如果list中的数据超过80个则进行分割，并调用方法获取下载所需最终的图片列表信息
+     * 获取图片列表的完整信息，处理批量请求（每批最多80张图片）
+     * 由于Pixiv的API限制，单次请求不能超过80个图片ID
      *
-     * @param userId      用户id
-     * @param pictureList 原始图片列表 userId/userName/PictureId/pageCount/type/status
-     * @return 最终图片列表 userId/userName/PictureId/title/src/pageCount/type/status
+     * @param userId      用户ID
+     * @param pictureList 原始图片列表，包含userId/userName/PictureId/pageCount/type/status
+     * @return 完整的图片列表，包含userId/userName/PictureId/title/src/pageCount/type/status
      */
     private List<Picture> getResultPictureList(Long userId, List<Picture> pictureList) {
         List<Picture> finalPictureList = new ArrayList<>();
 
-        //数量过多无法获取数据，需要将数据拆分下载
+        // Pixiv API限制：单次请求最多80个图片ID
         int batchSize = 80;
         int totalSize = pictureList.size();
 
@@ -606,12 +607,15 @@ public class PixivServiceImpl implements PixivService {
     }
 
     /**
-     * 获取下载图片所需的完整信息，在此方法中list必须<=80，同时在此方法中会对图片组获取所有的对应数据（pageCount）
+     * 获取下载图片所需的完整信息
+     * 通过调用Pixiv的批量查询接口获取图片的title、src等详细信息
+     * 注意：pictureList数量必须<=80，这是Pixiv API的限制
+     * 同时会对图片组数据进行处理，展开为多个独立的Picture对象
      *
-     * @param userId            用户id
-     * @param pictureList       图片列表 userId/userName/PictureId/pageCount/type/status
-     * @param resultPictureList 80条数据的图片列表
-     * @return 1-80条下载图片所需的相关数据，如果存在图片组数据则有可能会>80条数据
+     * @param userId            用户ID
+     * @param pictureList       图片列表，包含userId/userName/PictureId/pageCount/type/status
+     * @param resultPictureList 结果列表，用于收集处理后的完整图片信息
+     * @return 是否处理失败（true-失败，false-成功）
      */
     private boolean getPictureList(Long userId, List<Picture> pictureList, List<Picture> resultPictureList) {
         StringBuilder builder = new StringBuilder("https://www.pixiv.net/ajax/user/" + userId + "/profile/illusts?");
@@ -683,7 +687,7 @@ public class PixivServiceImpl implements PixivService {
                 continue;
             }
 
-            // 获取该picture组中的所有相关连接
+            // 获取该图片组中的所有图片，展开为独立的Picture对象
             for (int i = 0; i < pageCount; i++) {
                 Picture resultPicture = pixivUtils.getResultPicture(i, picture);
                 if (resultPicture != null) {
@@ -698,10 +702,14 @@ public class PixivServiceImpl implements PixivService {
 
 
     /**
-     * 正式下载图片 会对下载时间进行统计 更新数据库中的图片下载状态，并将下载失败的图片另存数据库
+     * 正式下载图片（带用户模式选项）
+     * 使用线程池并发下载图片，会对下载时间进行统计
+     * 更新数据库中的图片下载状态，并将下载失败的图片保存到fail_picture表
      *
-     * @param pictureList 图片列表 userId/userName/PictureId/pageCount/type/status
-     * @param useUserMode 是否需要隔离用户下载
+     * @param pictureList 图片列表，包含userId/userName/PictureId/pageCount/type/status
+     * @param useUserMode 是否使用用户模式下载
+     *                    true-图片保存到user目录（用于用户首次下载大量图片时）
+     *                    false-图片保存到temp目录（用于日常更新下载）
      */
     private void downloadPicture(List<Picture> pictureList, boolean useUserMode) {
         if (pictureList.isEmpty()) {
@@ -766,9 +774,10 @@ public class PixivServiceImpl implements PixivService {
     }
 
     /**
-     * 正式下载图片 会对下载时间进行统计 更新数据库中的图片下载状态，并将下载失败的图片另存数据库，默认不会隔离用户下载
+     * 正式下载图片（默认模式）
+     * 调用downloadPicture(pictureList, false)，不使用用户模式
      *
-     * @param pictureList 图片列表 userId/userName/PictureId/pageCount/type/status
+     * @param pictureList 图片列表，包含userId/userName/PictureId/pageCount/type/status
      */
     private void downloadPicture(List<Picture> pictureList) {
         downloadPicture(pictureList, false);

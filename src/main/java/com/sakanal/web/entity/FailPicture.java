@@ -13,9 +13,8 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * <p>
- *
- * </p>
+ * 下载失败的图片实体类，对应数据库中的 fail_picture 表
+ * 用于记录下载失败的图片信息，便于后续重试下载
  *
  * @author sakanal
  * @since 2023-01-13
@@ -60,10 +59,21 @@ public class FailPicture implements Serializable {
     }
 
 
+    /**
+     * 从 Picture 对象复制属性构造 FailPicture 对象
+     *
+     * @param picture 原始图片对象
+     */
     public FailPicture(Picture picture) {
         BeanUtils.copyProperties(picture,this);
     }
 
+    /**
+     * 设置用户名，自动过滤文件名中的非法字符
+     * 过滤规则与 Picture.setUserName 相同
+     *
+     * @param userName 原始用户名
+     */
     public void setUserName(String userName) {
         if (userName!=null){
             this.userName = userName.replace("/","·")
@@ -81,6 +91,12 @@ public class FailPicture implements Serializable {
         }
     }
 
+    /**
+     * 设置标题，自动过滤文件名中的非法字符
+     * 过滤规则与 Picture.setTitle 相同
+     *
+     * @param title 原始标题
+     */
     public void setTitle(String title) {
         if (title!=null){
             this.title = title.replace("/","·")
