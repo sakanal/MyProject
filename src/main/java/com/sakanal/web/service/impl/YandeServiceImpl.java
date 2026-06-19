@@ -75,89 +75,115 @@ public class YandeServiceImpl implements YandeService {
         }
         String tempDownloadDir = baseDownloadDir + "\\" + YANDE_SOURCE + "\\" + tags + "\\";
         int pages = getPages(pageDocument, tags, tempDownloadDir);
-        if (pages != 0) {
-            long start = System.currentTimeMillis();
-
-            List<CompletableFuture<Void>> pageFutures = new ArrayList<>();
-            List<Picture> allUpdatedPictures = Collections.synchronizedList(new ArrayList<>());
-            List<FailPicture> allFailPictures = Collections.synchronizedList(new ArrayList<>());
-
-            for (int page = 1; page <= pages; page++) {
-                final int currentPage = page;
-                CompletableFuture<Void> pageFuture = CompletableFuture.supplyAsync(() -> {
-                            String pageUrl = baseUrl + "&page=" + currentPage;
-                            Document document = getDocumentWithRetry(pageUrl, "获取页面数据");
-                            if (document == null) {
-                                return Collections.emptyList();
-                            }
-                            List<Picture> pictures = initPictureList(document, tags);
-                            return pictures != null ? pictures : Collections.emptyList();
-                        }, executor)
-                        .thenAcceptAsync(pictures -> {
-                            if (pictures.isEmpty()) {
-                                return;
-                            }
-
-                            List<CompletableFuture<Void>> pictureFutures = new ArrayList<>();
-
-                            List<Picture> picturesToUpdate = Collections.synchronizedList(new ArrayList<>());
-                            for (int i = 0; i < pictures.size(); i++) {
-                                final int currentIndex = i;
-                                final Picture picture = (Picture) pictures.get(i);
-                                CompletableFuture<Void> pictureFuture = CompletableFuture.runAsync(() -> {
-                                    log.info("第{}页，第{}张图片开始下载", currentPage, currentIndex + 1);
-
-                                    // 检查是否需要获取图片实际 URL
-                                    boolean needUpdateUrl = isPictureInfoUrl(picture);
-                                    boolean downloadResult = download(picture, tempDownloadDir);
-
-                                    if (downloadResult) {
-                                        log.info("第{}页，第{}张图片完成", currentPage, currentIndex + 1);
-                                        picture.setStatus(PictureStatusConstant.SUCCESS_STATUS);
-                                    } else {
-                                        log.info("存入失败队列，等待后续下载");
-                                        picture.setStatus(PictureStatusConstant.FAIL_STATUS);
-                                        allFailPictures.add(new FailPicture(picture));
-                                    }
-
-                                    // 如果更新了图片URL，添加到更新列表
-                                    if (needUpdateUrl) {
-                                        picturesToUpdate.add(picture);
-                                    }
-
-                                    allUpdatedPictures.add(picture);
-                                }, executor);
-                                pictureFutures.add(pictureFuture);
-                            }
-
-                            // 等待当前页面的所有图片下载完成
-                            CompletableFuture.allOf(pictureFutures.toArray(new CompletableFuture[0])).join();
-
-                            // 批量更新图片 URL
-                            if (!picturesToUpdate.isEmpty()) {
-                                pictureService.updateBatchById(picturesToUpdate);
-                            }
-                        }, executor);
-
-                pageFutures.add(pageFuture);
-            }
-
-            // 等待所有页面的处理完成
-            CompletableFuture.allOf(pageFutures.toArray(new CompletableFuture[0])).join();
-
-            // 批量更新数据库
-            if (!allUpdatedPictures.isEmpty()) {
-                pictureService.updateBatchById(allUpdatedPictures);
-            }
-            if (!allFailPictures.isEmpty()) {
-                boolean saveBatch = failPictureService.saveOrUpdateBatch(allFailPictures);
-                log.info("失败队列保存{}", saveBatch ? "成功" : "失败");
-            }
-
-            long end = System.currentTimeMillis();
-            log.info("耗时：{}秒", (end - start) / 1000);
+        if (pages == 0) {
+            return;
         }
 
+        long start = System.currentTimeMillis();
+        downloadAllPages(baseUrl, tags, tempDownloadDir, pages);
+        long end = System.currentTimeMillis();
+        log.info("耗时：{}秒", (end - start) / 1000);
+    }
+
+    /**
+     * 并发下载所有页面的图片
+     */
+    private void downloadAllPages(String baseUrl, String tags, String tempDownloadDir, int pages) {
+        List<CompletableFuture<Void>> pageFutures = new ArrayList<>();
+        List<Picture> allUpdatedPictures = Collections.synchronizedList(new ArrayList<>());
+        List<FailPicture> allFailPictures = Collections.synchronizedList(new ArrayList<>());
+
+        for (int page = 1; page <= pages; page++) {
+            CompletableFuture<Void> pageFuture = processSinglePage(
+                    baseUrl, tags, tempDownloadDir, page,
+                    allUpdatedPictures, allFailPictures);
+            pageFutures.add(pageFuture);
+        }
+
+        CompletableFuture.allOf(pageFutures.toArray(new CompletableFuture[0])).join();
+        updateDatabase(allUpdatedPictures, allFailPictures);
+    }
+
+    /**
+     * 处理单个页面的图片下载
+     */
+    private CompletableFuture<Void> processSinglePage(
+            String baseUrl, String tags, String tempDownloadDir, int currentPage,
+            List<Picture> allUpdatedPictures, List<FailPicture> allFailPictures) {
+
+        return CompletableFuture.<List<Picture>>supplyAsync(() -> {
+                    String pageUrl = baseUrl + "&page=" + currentPage;
+                    Document document = getDocumentWithRetry(pageUrl, "获取页面数据");
+                    if (document == null) {
+                        return Collections.emptyList();
+                    }
+                    List<Picture> pictures = initPictureList(document, tags);
+                    return pictures != null ? pictures : Collections.emptyList();
+                }, executor)
+                .thenAcceptAsync(pictures -> {
+                    if (pictures.isEmpty()) {
+                        return;
+                    }
+                    downloadPicturesForPage(pictures, currentPage,
+                            tempDownloadDir, allUpdatedPictures, allFailPictures);
+                }, executor);
+    }
+
+    /**
+     * 下载单个页面内的所有图片
+     */
+    private void downloadPicturesForPage(
+            List<Picture> pictures, int currentPage, String tempDownloadDir,
+            List<Picture> allUpdatedPictures, List<FailPicture> allFailPictures) {
+
+        List<CompletableFuture<Void>> pictureFutures = new ArrayList<>();
+        List<Picture> picturesToUpdate = Collections.synchronizedList(new ArrayList<>());
+
+        for (int i = 0; i < pictures.size(); i++) {
+            final int currentIndex = i;
+            final Picture picture = pictures.get(i);
+
+            CompletableFuture<Void> pictureFuture = CompletableFuture.runAsync(() -> {
+                log.info("第{}页，第{}张图片开始下载", currentPage, currentIndex + 1);
+
+                boolean needUpdateUrl = isPictureInfoUrl(picture);
+                boolean downloadResult = download(picture, tempDownloadDir);
+
+                if (downloadResult) {
+                    log.info("第{}页，第{}张图片完成", currentPage, currentIndex + 1);
+                    picture.setStatus(PictureStatusConstant.SUCCESS_STATUS);
+                } else {
+                    log.info("存入失败队列，等待后续下载");
+                    picture.setStatus(PictureStatusConstant.FAIL_STATUS);
+                    allFailPictures.add(new FailPicture(picture));
+                }
+
+                if (needUpdateUrl) {
+                    picturesToUpdate.add(picture);
+                }
+                allUpdatedPictures.add(picture);
+            }, executor);
+            pictureFutures.add(pictureFuture);
+        }
+
+        CompletableFuture.allOf(pictureFutures.toArray(new CompletableFuture[0])).join();
+
+        if (!picturesToUpdate.isEmpty()) {
+            pictureService.updateBatchById(picturesToUpdate);
+        }
+    }
+
+    /**
+     * 批量更新数据库
+     */
+    private void updateDatabase(List<Picture> allUpdatedPictures, List<FailPicture> allFailPictures) {
+        if (!allUpdatedPictures.isEmpty()) {
+            pictureService.updateBatchById(allUpdatedPictures);
+        }
+        if (!allFailPictures.isEmpty()) {
+            boolean saveBatch = failPictureService.saveOrUpdateBatch(allFailPictures);
+            log.info("失败队列保存{}", saveBatch ? "成功" : "失败");
+        }
     }
 
     @Override
