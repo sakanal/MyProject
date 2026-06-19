@@ -6,6 +6,9 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * @author sakanal
+ */
 @Slf4j
 @Configuration
 public class MyLockConfig {

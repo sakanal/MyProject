@@ -1,5 +1,8 @@
 package com.sakanal.web.constant;
 
+/**
+ * @author sakanal
+ */
 public class SourceConstant {
     public static final String PIXIV_SOURCE = "pixiv";
 

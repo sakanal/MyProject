@@ -8,6 +8,9 @@ import org.springframework.util.StringUtils;
 import java.io.*;
 import java.net.URL;
 
+/**
+ * @author sakanal
+ */
 @Slf4j
 public class PictureUtils {
     public static boolean downloadPicture(String downloadDir, Picture picture, InputStream inputStream, String type, boolean userFlag) {
@@ -66,7 +69,9 @@ public class PictureUtils {
             return false;
         }
         File file = createDir(downloadDir);
-        if (file == null) return false;
+        if (file == null) {
+            return false;
+        }
         if (!StringUtils.hasText(picture.getSrc())) {
             log.error("图片URL为空，pictureId: {}", picture.getPictureId());
             return false;
@@ -182,12 +187,14 @@ public class PictureUtils {
     private static String getSuffix(String src) {
         if (src == null || src.trim().isEmpty()) {
             log.error("获取文件后缀失败：URL为空");
-            return "jpg"; // 默认返回jpg作为后备
+            // 默认返回 jpg 作为后备
+            return "jpg";
         }
         String[] split = src.split("\\.");
         if (split.length < 2) {
             log.error("获取文件后缀失败：URL格式不正确，无法提取后缀: {}", src);
-            return "jpg"; // 默认返回jpg作为后备
+            // 默认返回 jpg 作为后备
+            return "jpg";
         }
         return split[split.length - 1];
     }

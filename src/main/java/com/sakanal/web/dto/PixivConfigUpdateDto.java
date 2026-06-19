@@ -5,7 +5,8 @@ import java.util.Map;
 import lombok.Data;
 
 /**
- * Pixiv配置更新请求参数类
+ * Pixiv 配置更新请求参数类
+ * @author sakanal
  */
 @Data
 public class PixivConfigUpdateDto {

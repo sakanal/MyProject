@@ -1,10 +1,13 @@
 package com.sakanal.web.service;
 
+/**
+ * @author sakanal
+ */
 public interface PixivService {
     /**
-     * 根据作者Id进行完全下载
+     * 根据作者 Id 进行完全下载
      *
-     * @param userId 作者Id
+     * @param userId 作者 Id
      */
     void downloadByUserId(Long userId);
 
@@ -26,7 +29,7 @@ public interface PixivService {
     /**
      * 更改数据库以及本地存储的文件夹中的用户名
      *
-     * @param userId   作者Id
+     * @param userId   作者 Id
      * @param userName 用户名
      * @return 是否成功
      */
@@ -35,7 +38,7 @@ public interface PixivService {
     /**
      * 保存作者数据到数据中
      *
-     * @param userId 作者Id
+     * @param userId 作者 Id
      * @return 是否成功
      */
     boolean saveUser(Long userId);
@@ -43,7 +46,7 @@ public interface PixivService {
     /**
      * 重置画作状态
      *
-     * @param pictureId 画作Id
+     * @param pictureId 画作 Id
      */
     void resetState(Long pictureId);
 }

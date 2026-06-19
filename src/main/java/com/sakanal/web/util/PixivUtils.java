@@ -25,11 +25,15 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * @author sakanal
+ */
 @Slf4j
 @Data
 @Configuration
-//@ConfigurationProperties(prefix = "system.pixiv")
 public class PixivUtils {
+
+    public static Pattern NUMBER_PATTERN = Pattern.compile("[0-9]+");
 
     @Resource
     private MyPixivConfig myPixivConfig;
@@ -45,13 +49,13 @@ public class PixivUtils {
      * @return List<Picture> userId/userName/PictureId/pageCount/type/status
      */
     public List<Picture> initPictureList(Long userId, String userName) {
-        String allPictureAjaxURL = "https://www.pixiv.net/ajax/user/" + userId + "/profile/all";
+        String allPictureAjaxUrl = "https://www.pixiv.net/ajax/user/" + userId + "/profile/all";
 
-        try (InputStream inputStream = getInputStream(allPictureAjaxURL)) {
+        try (InputStream inputStream = getInputStream(allPictureAjaxUrl)) {
             if (inputStream == null) {
                 return null;
             }
-            
+
             String result = getUrlResult(inputStream);
             if (!StringUtils.hasText(result)) {
                 log.error("获取所有作品数据失败，请检查网络情况");
@@ -62,9 +66,9 @@ public class PixivUtils {
             if (bodyObj == null) {
                 return null;
             }
-            
+
             Object illusts = bodyObj.get("illusts");
-            Matcher matcher = Pattern.compile("[0-9]+").matcher(illusts.toString());
+            Matcher matcher = NUMBER_PATTERN.matcher(illusts.toString());
             List<Picture> pictureList = new ArrayList<>();
             while (matcher.find()) {
                 String pictureId = matcher.group();
@@ -92,24 +96,24 @@ public class PixivUtils {
      * @return 作者名称
      */
     public String getUserName(Long userId) {
-        String ajaxURL = "https://www.pixiv.net/ajax/user/" + userId + "/profile/top";
+        String ajaxUrl = "https://www.pixiv.net/ajax/user/" + userId + "/profile/top";
 
-        try (InputStream inputStream = getInputStream(ajaxURL)) {
+        try (InputStream inputStream = getInputStream(ajaxUrl)) {
             if (inputStream == null) {
                 return null;
             }
-            
+
             String result = getUrlResult(inputStream);
             if (!StringUtils.hasText(result)) {
                 log.error("获取作者名称失败，请检查网络情况");
                 return null;
             }
-            
+
             JSONObject bodyObj = parseJsonBody(result);
             if (bodyObj == null) {
                 return null;
             }
-            
+
             JSONObject extraDataObj = JSONUtil.parseObj(bodyObj.get("extraData"));
             JSONObject metaObj = JSONUtil.parseObj(extraDataObj.get("meta"));
             return metaObj.getStr("title").replace(" - pixiv", "");
@@ -137,11 +141,12 @@ public class PixivUtils {
 
     /**
      * 根据链接获取数据，通用
+     *
      * @param url 链接
      * @return inputStream数据
      */
     public InputStream getInputStream(String url) {
-        URLConnection urlConnection = getURLConnection(url);
+        URLConnection urlConnection = getUrlConnection(url);
         if (urlConnection == null) {
             return null;
         }
@@ -163,6 +168,7 @@ public class PixivUtils {
 
     /**
      * 根据图片url获取图片数据，如果获取失败则尝试获取原始URL
+     *
      * @param picture 图片信息，需要其中的src数据
      * @return 图片源数据
      */
@@ -172,11 +178,11 @@ public class PixivUtils {
             picture.setStatus(PictureStatusConstant.DEFAULT_STATUS);
             return inputStream;
         }
-        
+
         // 获取失败，尝试获取原始链接
         log.error("获取数据失败，尝试获取原始链接");
         picture.setStatus(PictureStatusConstant.FAIL_STATUS);
-        
+
         boolean flag = getPictureOriginalUrl(picture);
         if (flag) {
             // 成功获取到源链接，再次尝试获取输入流
@@ -191,16 +197,17 @@ public class PixivUtils {
             // 获取链接失败，应该是gif文件
             log.error("获取数据失败，大概率为gif文件，需要自主下载");
         }
-        
+
         return null;
     }
 
     /**
      * 获取连接并设置参数
+     *
      * @param url 链接地址
      * @return URLConnection
      */
-    private URLConnection getURLConnection(String url) {
+    private URLConnection getUrlConnection(String url) {
         URLConnection urlConnection;
         try {
             urlConnection = new URL(url).openConnection();
@@ -208,7 +215,7 @@ public class PixivUtils {
             urlConnection.setReadTimeout(20000);
             urlConnection.setUseCaches(false);
         } catch (IOException e) {
-            log.error("建立连接失败，请检查代理以及网络情况",e);
+            log.error("建立连接失败，请检查代理以及网络情况", e);
             return null;
         }
         Set<String> keySet = myPixivConfig.getRequestHeader().keySet();
@@ -221,13 +228,14 @@ public class PixivUtils {
 
     /**
      * 转换链接数据
+     *
      * @param inputStream 获取到的链接数据
      * @return 转换后的String类型数据
      */
     public String getUrlResult(InputStream inputStream) {
         try (InputStreamReader inputStreamReader = createInputStreamReader(inputStream);
              BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
-              
+
             StringBuilder builder = new StringBuilder();
             String line;
             while ((line = bufferedReader.readLine()) != null) {
@@ -239,7 +247,7 @@ public class PixivUtils {
             return null;
         }
     }
-    
+
     /**
      * 创建InputStreamReader，支持自定义字符集
      */
@@ -253,6 +261,7 @@ public class PixivUtils {
 
     /**
      * 解析JSON响应中的body部分
+     *
      * @param jsonResponse JSON响应字符串
      * @return 解析后的body JSON对象
      */
@@ -281,6 +290,7 @@ public class PixivUtils {
 
     /**
      * 获取原图连接
+     *
      * @param picture 图片，只需要图片id即可
      * @return 如果是gif返回null，否则返回原图链接，不需要考虑后缀的问题
      */
@@ -291,13 +301,13 @@ public class PixivUtils {
                 log.error("通过链接获取数据失败");
                 return false;
             }
-            
+
             String result = getUrlResult(inputStream);
             if (!StringUtils.hasText(result)) {
                 log.error("数据解析失败");
                 return false;
             }
-            
+
             // 将 body 解析结果存储在 bodyObj 中，避免重复解析
             JSONObject bodyObj = parseJsonBody(result);
             if (bodyObj != null) {
@@ -317,6 +327,7 @@ public class PixivUtils {
 
     /**
      * 根据图片id获取图片的所有所需信息，如果是图片组则只有首张图片的信息，pageCount会>1
+     *
      * @param pictureId 图片id
      * @return 该图片的所有下载所需的信息
      */
@@ -329,13 +340,13 @@ public class PixivUtils {
                 log.error("通过链接获取图片数据失败");
                 return null;
             }
-            
+
             String result = getUrlResult(inputStream);
             if (!StringUtils.hasText(result)) {
                 log.error("数据解析失败");
                 return null;
             }
-            
+
             JSONObject bodyObj = parseJsonBody(result);
             if (bodyObj == null) {
                 return null;
@@ -349,7 +360,7 @@ public class PixivUtils {
             picture.setPageCount(bodyObj.getInt("pageCount"));
             picture.setSrc(JSONUtil.parseObj(bodyObj.get("urls")).getStr("original"));
             picture.setType(SourceConstant.PIXIV_SOURCE);
-            
+
             return picture;
         } catch (Exception e) {
             log.error("通过连接获取图片所需数据出现异常", e);

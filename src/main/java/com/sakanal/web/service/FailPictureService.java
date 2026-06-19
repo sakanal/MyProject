@@ -16,5 +16,10 @@ import java.util.List;
  */
 public interface FailPictureService extends IService<FailPicture> {
 
+    /**
+     * 批量保存或更新失败图片
+     * @param pictureList 图片列表
+     * @return 是否成功
+     */
     boolean saveOrUpdateBatch(List<Picture> pictureList);
 }

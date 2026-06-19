@@ -18,6 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * @author sakanal
+ */
 @Slf4j
 @Data
 @Configuration
@@ -38,13 +41,13 @@ public class SeleniumUtils {
         return new EdgeDriver(edgeOptions);
     }
 
-//    @Bean
-    public void setCookies(){
+/*    @Bean
+    public void setCookies() {
         WebDriver webDriver = getWebDriver();
         webDriver.get("https://www.pixiv.net/");
         webDriver.findElement(By.className("signup-form__submit--login")).click();
         List<WebElement> elementList = webDriver.findElements(By.className("sc-bn9ph6-1"));
-        if(elementList.size()==2){
+        if (elementList.size() == 2) {
             elementList.get(0).click();
             elementList.get(0).sendKeys(myPixivConfig.getUsername());
             elementList.get(1).click();
@@ -52,15 +55,15 @@ public class SeleniumUtils {
             webDriver.findElement(By.className("sc-2o1uwj-6")).click();
             Set<Cookie> cookies = webDriver.manage().getCookies();
             StringBuilder builder = new StringBuilder();
-            cookies.forEach(cookie->{
+            cookies.forEach(cookie -> {
                 String name = cookie.getName();
                 String value = cookie.getValue();
                 builder.append(name).append("=").append(value).append(";").append(" ");
             });
             Map<String, String> requestHeader = myPixivConfig.getRequestHeader();
-            requestHeader.put("cookie",new String(builder));
+            requestHeader.put("cookie", new String(builder));
             myPixivConfig.setRequestHeader(requestHeader);
         }
-    }
+    }*/
 
 }

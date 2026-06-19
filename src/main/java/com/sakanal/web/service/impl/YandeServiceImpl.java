@@ -10,7 +10,7 @@ import com.sakanal.web.service.FailPictureService;
 import com.sakanal.web.service.PictureService;
 import com.sakanal.web.service.UserService;
 import com.sakanal.web.service.YandeService;
-import com.sakanal.web.util.MySSlUtils;
+import com.sakanal.web.util.MySslUtils;
 import com.sakanal.web.util.PictureUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
@@ -37,6 +37,9 @@ import java.util.stream.Collectors;
 import static com.sakanal.web.constant.SourceConstant.YANDE_SOURCE;
 import static com.sakanal.web.constant.SourceConstant.YANDE_URL;
 
+/**
+ * @author sakanal
+ */
 @Slf4j
 @Service
 public class YandeServiceImpl implements YandeService {
@@ -60,13 +63,13 @@ public class YandeServiceImpl implements YandeService {
      */
     @Override
     public void download(String tags) {
-        String baseURL = YANDE_URL + "post?tags=" + tags;
-        // 初始化SSL设置
-        if (!initSSL()) {
+        String baseUrl = YANDE_URL + "post?tags=" + tags;
+        // 初始化 SSL 设置
+        if (!initSsl()) {
             return;
         }
 
-        Document pageDocument = getDocument(baseURL, "获取总页数");
+        Document pageDocument = getDocument(baseUrl, "获取总页数");
         if (pageDocument == null) {
             return;
         }
@@ -82,8 +85,8 @@ public class YandeServiceImpl implements YandeService {
             for (int page = 1; page <= pages; page++) {
                 final int currentPage = page;
                 CompletableFuture<Void> pageFuture = CompletableFuture.supplyAsync(() -> {
-                            String pageURL = baseURL + "&page=" + currentPage;
-                            Document document = getDocumentWithRetry(pageURL, "获取页面数据");
+                            String pageUrl = baseUrl + "&page=" + currentPage;
+                            Document document = getDocumentWithRetry(pageUrl, "获取页面数据");
                             if (document == null) {
                                 return Collections.emptyList();
                             }
@@ -104,8 +107,8 @@ public class YandeServiceImpl implements YandeService {
                                 CompletableFuture<Void> pictureFuture = CompletableFuture.runAsync(() -> {
                                     log.info("第{}页，第{}张图片开始下载", currentPage, currentIndex + 1);
 
-                                    // 检查是否需要获取图片实际URL
-                                    boolean needUpdateUrl = isPictureInfoURL(picture);
+                                    // 检查是否需要获取图片实际 URL
+                                    boolean needUpdateUrl = isPictureInfoUrl(picture);
                                     boolean downloadResult = download(picture, tempDownloadDir);
 
                                     if (downloadResult) {
@@ -130,7 +133,7 @@ public class YandeServiceImpl implements YandeService {
                             // 等待当前页面的所有图片下载完成
                             CompletableFuture.allOf(pictureFutures.toArray(new CompletableFuture[0])).join();
 
-                            // 批量更新图片URL
+                            // 批量更新图片 URL
                             if (!picturesToUpdate.isEmpty()) {
                                 pictureService.updateBatchById(picturesToUpdate);
                             }
@@ -159,13 +162,13 @@ public class YandeServiceImpl implements YandeService {
 
     @Override
     public void againDownload() {
-        // 获取数据中状态为default和fail的数据
+        // 获取数据中状态为 default 和 fail 的数据
         List<Picture> pictureList = pictureService.list(new LambdaQueryWrapper<Picture>()
                 .eq(Picture::getType, YANDE_SOURCE)
                 .and(query -> query.eq(Picture::getStatus, PictureStatusConstant.DEFAULT_STATUS)
                         .or().eq(Picture::getStatus, PictureStatusConstant.FAIL_STATUS)));
         if (pictureList != null && !pictureList.isEmpty()) {
-            if (!initSSL()) {
+            if (!initSsl()) {
                 return;
             }
             Set<Long> failPictureIdSet = new HashSet<>();
@@ -347,23 +350,24 @@ public class YandeServiceImpl implements YandeService {
      * @param picture 图片数据
      */
     private boolean download(Picture picture, String downloadDir) {
-        boolean check = isPictureInfoURL(picture);
+        boolean check = isPictureInfoUrl(picture);
         if (check) {
             boolean pictureInfo = getPictureInfo(picture);
-            if (!pictureInfo)
+            if (!pictureInfo) {
                 return false;
+            }
         }
         return PictureUtils.downloadPicture(downloadDir, picture, null, YANDE_SOURCE);
 
     }
 
     /**
-     * 检测src是图片的详细页面的路径还是图片网络地址
+     * 检测 src 是图片的详细页面的路径还是图片网络地址
      *
      * @param picture 图片数据 使用src
      * @return true-是图片详细页面的路径 false-是图片网络地址
      */
-    private boolean isPictureInfoURL(Picture picture) {
+    private boolean isPictureInfoUrl(Picture picture) {
         //https://files.yande.re/image/f9fcee6e7b8dd0cbf2d291d8b485d0a2/yande.re%201021573%20bondage%20breasts%20censored%20cum%20dress%20extreme_content%20garter%20iijima_masashi%20nipples%20no_bra%20nopan%20pussy%20pussy_juice%20skirt_lift%20tentacles%20wet%20wings.png
         //https://yande.re//post/show/1021572
         String src = picture.getSrc();
@@ -404,9 +408,9 @@ public class YandeServiceImpl implements YandeService {
     /**
      * 初始化SSL设置
      */
-    private boolean initSSL() {
+    private boolean initSsl() {
         try {
-            MySSlUtils.ignoreSsl();
+            MySslUtils.ignoreSsl();
             return true;
         } catch (Exception e) {
             log.error("忽略SSL证书失败, message={}", e.getMessage());

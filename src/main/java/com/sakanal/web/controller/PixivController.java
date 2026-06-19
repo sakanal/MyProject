@@ -18,6 +18,9 @@ import javax.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * @author sakanal
+ */
 @Slf4j
 @RestController
 @RequestMapping("/web/pixiv")

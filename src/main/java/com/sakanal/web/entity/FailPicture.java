@@ -100,8 +100,12 @@ public class FailPicture implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         FailPicture failPicture = (FailPicture) o;
         return pictureId.equals(failPicture.pictureId) && userName.equals(failPicture.userName);
     }

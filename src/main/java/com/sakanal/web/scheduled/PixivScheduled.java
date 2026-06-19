@@ -8,6 +8,9 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 
+/**
+ * @author sakanal
+ */
 @Slf4j
 @Component
 public class PixivScheduled {

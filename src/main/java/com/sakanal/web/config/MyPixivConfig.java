@@ -7,6 +7,9 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.Map;
 
+/**
+ * @author sakanal
+ */
 @Slf4j
 @Data
 @Configuration

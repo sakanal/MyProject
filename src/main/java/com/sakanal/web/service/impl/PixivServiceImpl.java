@@ -34,6 +34,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.sakanal.web.util.PixivUtils.NUMBER_PATTERN;
+
 /**
  * PixivService接口实现类，负责处理Pixiv相关的业务逻辑
  * <p>
@@ -318,7 +320,7 @@ public class PixivServiceImpl implements PixivService {
 
             // 截取所有的图片Id
             if (ids != null) {
-                Matcher matcher = Pattern.compile("[0-9]+").matcher(ids.toString());
+                Matcher matcher = NUMBER_PATTERN.matcher(ids.toString());
                 List<Picture> pictureList = new ArrayList<>();
                 while (matcher.find()) {
                     String pictureIdStr = matcher.group();
@@ -621,7 +623,9 @@ public class PixivServiceImpl implements PixivService {
         String responseJson;
         // 使用try-with-resources确保inputStream正确关闭 - JDK 1.8兼容：资源在try块内部声明
         try (InputStream inputStream = pixivUtils.getInputStream(builder.toString())) {
-            if (inputStream == null) return true;
+            if (inputStream == null) {
+                return true;
+            }
             // 解析页面数据并转成字符串用于后续获取实际有效数据
             responseJson = pixivUtils.getUrlResult(inputStream);
         } catch (IOException e) {
@@ -629,7 +633,9 @@ public class PixivServiceImpl implements PixivService {
             return true;
         }
 
-        if (!StringUtils.hasText(responseJson)) return true;
+        if (!StringUtils.hasText(responseJson)) {
+            return true;
+        }
 
         JSONObject worksJson;
         try {
